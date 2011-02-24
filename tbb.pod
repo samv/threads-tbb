@@ -31,11 +31,7 @@ threads::tbb - interface to the Threading Building Blocks (TBB) API
  # this is equivalent in this case, to use the defaults
  threads::tbb::parallel_for(\@array, \&body);
 
- # thread-safe, shared containers backed by
- # concurrent_hash_map and concurrent_vector so you can write
- # to them in your parallel_for function bodies
- my %hash :concurrent;
- my @array :concurrent;
+ my $channel :concurrent;  # FIFO queue
 
  # another way to do that is to use parallel_reduce
  my $body_func = sub {
@@ -56,6 +52,24 @@ threads::tbb - interface to the Threading Building Blocks (TBB) API
            body => $body_func,
            join => $join_func,
            );
+
+ # Containers:
+ # thread-safe, shared containers backed by
+ # concurrent_hash_map and concurrent_vector so you can write
+ # to them in your parallel_for function bodies
+ my %hash :concurrent_hash_map;
+ my @array :concurrent_array;
+ my $fifo :concurrent_queue;
+ my $fifo_bounded :concurrent_bounded_queue;
+
+ # More algorithms:
+ # parallel_while / parallel_do,
+ # pipeline,
+ # parallel_invoke,
+ # parallel_sort,
+
+ # consider: task/group contexts, memory allocation,
+ # mutex stuff, timing (tick count)
 
 =head1 DESCRIPTION
 
