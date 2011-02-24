@@ -1,0 +1,119 @@
+
+=head1 NAME
+
+threads::tbb - interface to the Threading Building Blocks (TBB) API
+
+=head1 SYNOPSIS
+
+ use threads::tbb;
+
+ # a tbb::task_scheduler_init (C++ name) object; optional:
+ # number of threads, for debugging.
+ my $sched = threads::tbb::init();
+
+ # constructing domains of values/arguments: either an int,
+ # or simple arrays.
+ my $range_i = threads::tbb::blocked_int->new(1, 40);
+ my $range_a = threads::tbb::divisible_array(@array);
+
+ # "partitioners" that automatically divide domains, eg by
+ # "grain size" of work thought to be ~10,000+ cycles of work
+ my $part_i = threads::tbb::simple_partitioner($range_i, 10);
+
+ # automatic partitioner that keeps dividing arrays and
+ # adjusts grain size automatically
+
+ my $part_a = threads::tbb::auto_partitioner($range_a);
+
+ # execute a parallel_for call
+ threads::tbb::parallel_for($range_a, \&body, $part_a);
+
+ # this is equivalent in this case, to use the defaults
+ threads::tbb::parallel_for(\@array, \&body);
+
+ # thread-safe, shared containers backed by
+ # concurrent_hash_map and concurrent_vector so you can write
+ # to them in your parallel_for function bodies
+ my %hash :concurrent;
+ my @array :concurrent;
+
+ # another way to do that is to use parallel_reduce
+ my $body_func = sub {
+    my $val = shift;
+    # ... transform $val ...
+    return $val + int(rand(10));
+ };
+ # "join" function can modify itself
+ my $join_func = sub {
+    my $val = shift;
+    my $other = shift;
+    [ $val ]
+ };
+ my $reduced = threads::tbb::parallel_reduce(
+           range => $range,
+           identity => $id,
+           partitioner => $part,
+           body => $body_func,
+           join => $join_func,
+           );
+
+=head1 DESCRIPTION
+
+This module provides access to a few core TBB API functions to Perl
+programs.
+
+The algorithms employed by TBB are quite different to threads as
+provided by L<threads>; instead of directly starting threads and
+managing their communication, an API is provided that provides I<data
+paralellism>; in particular, I<divide and conquer> processing with
+I<task stealing>.
+
+When the threads::tbb::init() call is made, one worker thread is
+created for each processor core or virtual core.  This is performed by
+the TBB library and it is best to only do this at runtime (not during
+module initialization or run-time); subsequent calls to it will not
+create new worker threads, instead re-using the existing scheduler.
+Efforts are taken to make the overhead of calling threads::tbb::init()
+small when it is not needed.
+
+=head2 5005threads notes
+
+This module has been back-ported to the 5005threads threading approach
+discontinuted with Perl 5.10.
+
+This is mostly done as a performance test, to see how much of a
+difference this makes.  When running with 5005threads, the module does
+not need to use shared_clone which removes an overhead.  It also uses
+significantly less memory.
+
+=head2 ithreads notes
+
+The new threads are created at the first threads::tbb::init() call, so
+any dynamic loading your thread has done may not be picked up by the
+other threads.
+
+In Perl, sharable variables need to be explicitly marked as shared and
+may not store complex data; so the the range passed in is cloned via
+shared_clone($ref) to the temporary variable space used by the module.
+
+=head2 threads::lite notes
+
+Worker threads can be created via threads::lite using the extra
+arguments to threads::tbb::init();
+
+  threads::tbb::init(
+      modules => [ ... ],
+      threads => int,
+      );
+
+This will create the interpreters for the worker threads using the
+passed modules.
+
+If threads::tbb::init() is called again with new modules, the worker
+threads will load those modules in their own time as well.  It is
+faster to load all the modules at the front before the worker pool is
+created, so try to get the modules => [] right first time, but if you
+don't it should still work.
+
+=cut
+
