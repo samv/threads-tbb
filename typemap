@@ -1,0 +1,2 @@
+TYPEMAP
+perl_tbb_init*	O_OBJECT
