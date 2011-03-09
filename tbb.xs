@@ -12,7 +12,7 @@ extern "C" {
 
 /* We need one MODULE... line to start the actual XS section of the file.
  * The XS++ preprocessor will output its own MODULE and PACKAGE lines */
-MODULE = threads::tbb		PACKAGE = threads::tbb
+MODULE = threads::tbb::init		PACKAGE = threads::tbb::init
 
 ## The include line executes xspp with the supplied typemap and the
 ## xsp interface code for our class.
@@ -25,6 +25,16 @@ perl_tbb_init*
 perl_tbb_init::new()
 
 void
+perl_tbb_init::initialize( nthr )
+      int nthr;
+
+void
 perl_tbb_init::DESTROY()
+
+void
+perl_tbb_init::terminate()
+
+
+MODULE = threads::tbb		PACKAGE = threads::tbb
 
 
