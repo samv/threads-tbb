@@ -43,5 +43,9 @@ perl_tbb_blocked_int::new( low, high, grain )
 	      int high;
 	      int grain;
 
+int
+perl_tbb_blocked_int::size( )
+
+
 MODULE = threads::tbb		PACKAGE = threads::tbb
 
