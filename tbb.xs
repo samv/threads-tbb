@@ -35,6 +35,13 @@ void
 perl_tbb_init::terminate()
 
 
-MODULE = threads::tbb		PACKAGE = threads::tbb
+MODULE = threads::tbb::blocked_int		PACKAGE = threads::tbb::blocked_int
 
+perl_tbb_blocked_int*
+perl_tbb_blocked_int::new( low, high, grain )
+	      int low;
+	      int high;
+	      int grain;
+
+MODULE = threads::tbb		PACKAGE = threads::tbb
 

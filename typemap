@@ -1,2 +1,3 @@
 TYPEMAP
 perl_tbb_init*	O_OBJECT
+perl_tbb_blocked_int*	O_OBJECT
