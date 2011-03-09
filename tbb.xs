@@ -47,10 +47,19 @@ int
 perl_tbb_blocked_int::size( )
 
 int
+perl_tbb_blocked_int::grainsize( )
+
+int
 perl_tbb_blocked_int::begin( )
 
 int
 perl_tbb_blocked_int::end( )
+
+bool
+perl_tbb_blocked_int::empty( )
+
+bool
+perl_tbb_blocked_int::is_divisible( )
 
 MODULE = threads::tbb		PACKAGE = threads::tbb
 
