@@ -61,5 +61,24 @@ perl_tbb_blocked_int::empty( )
 bool
 perl_tbb_blocked_int::is_divisible( )
 
+MODULE = threads::tbb::blocked_array		PACKAGE = threads::tbb::blocked_array
+
+perl_tbb_blocked_array*
+perl_tbb_blocked_array::new( array, grain )
+		     AV* array;
+		     int grain;
+
+AV*
+perl_tbb_blocked_array::_get_array()
+
+bool
+perl_tbb_blocked_array::is_divisible()
+
+int
+perl_tbb_blocked_array::size()
+
+int
+perl_tbb_blocked_array::grainsize()
+
 MODULE = threads::tbb		PACKAGE = threads::tbb
 

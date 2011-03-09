@@ -5,6 +5,7 @@ threads::tbb - interface to the Threading Building Blocks (TBB) API
 
 =head1 SYNOPSIS
 
+ use threads::shared;
  use threads::tbb;
 
  # a tbb::task_scheduler_init (C++ name) object; optional:
@@ -13,17 +14,20 @@ threads::tbb - interface to the Threading Building Blocks (TBB) API
 
  # constructing domains of values/arguments: either an int,
  # or simple arrays.
- my $range_i = threads::tbb::blocked_int->new(1, 40);
- my $range_a = threads::tbb::divisible_array(@array);
+ my $range_i = threads::tbb::blocked_int->new(1, 40, 5);
+
+ # shared_clone the array you pass to blocked_array
+ my $range_a = threads::tbb::blocked_array->new(
+      shared_clone(\@array), 5,
+      );
 
  # "partitioners" that automatically divide domains, eg by
  # "grain size" of work thought to be ~10,000+ cycles of work
- my $part_i = threads::tbb::simple_partitioner($range_i, 10);
+ my $part_i = threads::tbb::simple_partitioner->new($range_i, 10);
 
  # automatic partitioner that keeps dividing arrays and
  # adjusts grain size automatically
-
- my $part_a = threads::tbb::auto_partitioner($range_a);
+ my $part_a = threads::tbb::auto_partitioner->new($range_a);
 
  # execute a parallel_for call
  threads::tbb::parallel_for($range_a, \&body, $part_a);
