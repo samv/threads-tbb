@@ -3,77 +3,28 @@
 
 threads::tbb - interface to the Threading Building Blocks (TBB) API
 
-=head1 SYNOPSIS
+=head1 SYNOPSIS / TODO
 
- use threads::shared;
+ # first instance:
+ #   - records %INC
+ #   - adds to @INC a closure that keeps a track of loaded modules
  use threads::tbb;
 
- # a tbb::task_scheduler_init (C++ name) object; optional:
- # number of threads, for debugging.
- my $sched = threads::tbb::init();
+ # a tbb::task_scheduler_init (C++ name) object; demands that
+ # slave perls are brought to full readiness.
+ my $sched = threads::tbb::init->new();
 
- # constructing domains of values/arguments: either an int,
- # or simple arrays.
+ # a chunked sequence generator
  my $range_i = threads::tbb::blocked_int->new(1, 40, 5);
 
- # shared_clone the array you pass to blocked_array
- my $range_a = threads::tbb::blocked_array->new(
-      shared_clone(\@array), 5,
-      );
+ # a concurrent arrays: deep copy in and out
+ tie my @data, "threads::tbb::concurrent::array";
 
- # "partitioners" that automatically divide domains, eg by
- # "grain size" of work thought to be ~10,000+ cycles of work
- my $part_i = threads::tbb::simple_partitioner->new($range_i, 10);
+ # do data parallel work
+ parallel_for($range_i, \&execute);
 
- # automatic partitioner that keeps dividing arrays and
- # adjusts grain size automatically
- my $part_a = threads::tbb::auto_partitioner->new($range_a);
-
- # execute a parallel_for call
- threads::tbb::parallel_for($range_a, \&body, $part_a);
-
- # this is equivalent in this case, to use the defaults
- threads::tbb::parallel_for(\@array, \&body);
-
- my $channel :concurrent;  # FIFO queue
-
- # another way to do that is to use parallel_reduce
- my $body_func = sub {
-    my $val = shift;
-    # ... transform $val ...
-    return $val + int(rand(10));
- };
- # "join" function can modify itself
- my $join_func = sub {
-    my $val = shift;
-    my $other = shift;
-    [ $val ]
- };
- my $reduced = threads::tbb::parallel_reduce(
-           range => $range,
-           identity => $id,
-           partitioner => $part,
-           body => $body_func,
-           join => $join_func,
-           );
-
- # Containers:
- # thread-safe, shared containers backed by
- # concurrent_hash_map and concurrent_vector so you can write
- # to them in your parallel_for function bodies
- my %hash :concurrent_hash_map;
- my @array :concurrent_array;
- my $fifo :concurrent_queue;
- my $fifo_bounded :concurrent_bounded_queue;
-
- # More algorithms:
- # parallel_while / parallel_do,
- # pipeline,
- # parallel_invoke,
- # parallel_sort,
-
- # consider: task/group contexts, memory allocation,
- # mutex stuff, timing (tick count)
+ # map/reduce
+ my $result = parallel_reduce($range_i, \&execute, \&join);
 
 =head1 DESCRIPTION
 
@@ -89,10 +40,194 @@ I<task stealing>.
 When the threads::tbb::init() call is made, one worker thread is
 created for each processor core or virtual core.  This is performed by
 the TBB library and it is best to only do this at runtime (not during
-module initialization or run-time); subsequent calls to it will not
-create new worker threads, instead re-using the existing scheduler.
-Efforts are taken to make the overhead of calling threads::tbb::init()
-small when it is not needed.
+module initialization or module run-time); subsequent calls to it will
+not create new worker threads, instead re-using the existing
+scheduler.  Efforts are taken to make the overhead of calling
+threads::tbb::init() small when it is not needed.
+
+=head1 CONCEPTS
+
+=head2 Divide and Conquer
+
+The divide and conquer algorithm used by TBB is quite different to
+most threading libraries.  Instead of trying to make things like
+locking easy, you go for thread-safe operations.
+
+This is a bit like map/reduce.  You can see examples of it in
+parallel_for and parallel_reduce, below
+
+=head2 Memory model
+
+Objects are copied in and out of a slave interpreter, that is only
+ever called as the target of a Storable dump and load.  Storable 
+
+=head1 FUNCTIONS
+
+Some are too good not to export by default.
+
+=head2 parallel_for
+
+For can be used to process a set of data.  You can use it as a map
+function by using a different output array until pipelining primitives
+are added.
+
+  use threads::tbb;
+  tie my @array, "threads::tbb::concurrent::array";
+
+  @array = @data;  # deep copy
+
+  # get a range for that array.  up to 5 at a time.
+  my $array_range = threads::tbb::blocked_int->new(0, $#array, 5);
+
+  # now run parallel_for
+  parallel_for( $array_range, sub {
+      my $range = shift;
+
+      # code may be executed in a thread.
+      # we now have exclusive use of
+      #   @array[$range->begin .. $range->end]
+
+      for my $i ($range->begin .. $range->end) {
+          my $val = $array[$i];  # another deep copy
+
+          $val->frobnicate();  # change it somehow
+
+          $array[$i] = $val;   # deep copy
+      }
+  } );
+
+[Note: these may have to be re-implementations of the top-level glue
+templates of the same name; if we need to put magic in at the task
+level]
+
+=head2 parallel_reduce
+
+Parallel_reduce is just parallel_for, but with another function to
+combine results from the array at the end.  It's not called
+parallel_forreduce due to the latter's similarity with an obscure
+Pirate Interjection.
+
+  use threads::tbb;
+  tie my @array, "threads::tbb::concurrent::array";
+
+  @array = @data;  # deep copy
+
+  # get a range for that array.  up to 5 at a time.
+  my $array_range = threads::tbb::blocked_int->new(0, $#array, 5);
+
+  # now run parallel_for
+  parallel_reduce( $array_range, sub {
+      my $range = shift;
+
+      # code may be executed in a thread.
+      # we now have exclusive use of
+      #   @array[$range->begin .. $range->end]
+
+      my $price = 0;
+      for my $i ($range->begin .. $range->end) {
+          my $val = $array[$i];  # another deep copy
+
+          my $price = $val->compute_cost();
+      }
+      return $result;
+  },
+  sub {
+      # fold a value from a and b to a new value.
+      # deep copies in and out.  Check b is not undef.
+      my ($a, $b) = @_;
+      return defined $b ? $a + $b : $a;
+  },
+  );
+
+=head1 LIES
+
+These goals are for the moment LIES
+
+=head2 LIES/SYNOPSIS
+
+ # if @array is not already a concurrent array, this copies to shared
+ # interpreter.  #TODO #LATER
+ my $range_a = threads::tbb::blocked_array->new( \@array, 5 );
+
+ # "partitioners" #TODO #LATER that automatically divide domains, eg
+ # by "grain size" of work thought to be ~10,000+ cycles of work
+ my $part_i = threads::tbb::simple_partitioner->new($range_i, 10);
+ # automatic partitioner that keeps dividing arrays and
+ # adjusts grain size automatically
+ my $part_a = threads::tbb::auto_partitioner->new($range_a);
+
+ # execute a parallel_for call #TODO #LATER - &body is saved via
+ # Storable.
+ parallel_for($range_a, \&body, $part_a);
+ parallel_for(\@array, \&body);
+
+ my @array :tbb_fifo;  # FIFO queue
+
+ # another way to do that is to use parallel_reduce
+ my $body_func = sub {
+    my $val = shift;
+    # ... transform $val ...
+    return $val + int(rand(10));
+ };
+ my $join_func = sub {
+    my $val = shift;
+    my $other = shift;
+    [ $val ]
+ };
+ # simplified usage below
+ my $reduced = parallel_reduce(
+           range => $range,
+           identity => $id,
+           partitioner => $part,
+           body => $body_func,
+           join => $join_func,
+           );
+
+ # Containers:
+ # thread-safe, shared containers backed by
+ # concurrent_hash_map and concurrent_vector so you can write
+ # to them in your parallel_for function bodies
+ my %hash :threads::tbb;
+ my @array :threads::tbb;
+ my @array :threads::tbb::concurrent_queue;
+
+ # More algorithms:
+ # parallel_while / parallel_do,
+ # pipeline,
+ # parallel_invoke,
+ # parallel_sort,
+
+ # consider: task/group contexts, memory allocation,
+ # mutex stuff, timing (tick count)
+
+=head2 parallel_scan #TODO #LATER
+
+... an obscure one; see http://en.wikipedia.org/wiki/Prefix_sum ...
+
+Not implemented.
+
+=head2 parallel_while #TODO
+
+Less obscure
+
+  my $i = 20;
+  my $iterator = sub {
+      $i-- || undef;
+  };
+  # deep copied to the sub in this block
+  parallel_while($iterator, sub {
+
+      # you can add another iterator to the while block
+      parallel_while_add($iterator2);
+
+  });
+
+Each of the iterators added run in the thread context of the
+interpreter that added them.
+
+=head2 pipeline / filter
+
+=head2 parallel_sort
 
 =head2 5005threads notes
 
