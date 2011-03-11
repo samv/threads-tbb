@@ -10,8 +10,8 @@ threads::tbb - interface to the Threading Building Blocks (TBB) API
  #   - adds to @INC a closure that keeps a track of loaded modules
  use threads::tbb;
 
- # a tbb::task_scheduler_init (C++ name) object; demands that
- # slave perls are brought to full readiness.
+ # a tbb::task_scheduler_init (C++ name) object; list of modules
+ # for slave threads will be updated.
  my $sched = threads::tbb::init->new();
 
  # a chunked sequence generator
@@ -32,18 +32,100 @@ This module provides access to a few core TBB API functions to Perl
 programs.
 
 The algorithms employed by TBB are quite different to threads as
-provided by L<threads>; instead of directly starting threads and
+provided by L<use threads;> - instead of directly starting threads and
 managing their communication, an API is provided that provides I<data
 paralellism>; in particular, I<divide and conquer> processing with
 I<task stealing>.
 
-When the threads::tbb::init() call is made, one worker thread is
-created for each processor core or virtual core.  This is performed by
-the TBB library and it is best to only do this at runtime (not during
-module initialization or module run-time); subsequent calls to it will
-not create new worker threads, instead re-using the existing
-scheduler.  Efforts are taken to make the overhead of calling
-threads::tbb::init() small when it is not needed.
+Instead of writing algorithms from the perspective of a thread and
+what the thread should do next, small but substantial (1,000's of Perl
+opcode iterations) and non-blocking chunks of work are identified and
+kept in thread-affinitive task lists.  Other threads can come along to
+and "steal" work from these lists, to keep cores busy.
+
+=head2 Interpreter vs Thread design
+
+When the first C<threads::tbb::init> object is made, one worker
+pthread is created for each processor core or virtual core.  This is
+performed by the TBB library before the Perl interpreter can C<use
+strict;>
+
+Subsequent calls to it will not create new worker pthreads, instead
+they will re-use the existing threads.
+
+However these ready-to-go system threads are not Perl interpreter
+threads yet and the design needs to be considered;
+
+=over
+
+=item 1. interpreter per pthread
+
+In this mode, as soon as a task gets to run it tries to pick up an
+interpreter it has used before.  A C<tbb::concurrent_hash_map> maps
+from the thread ID (PID on Linux) to an interpreter; all classes which
+implement C<tbb::> algorithms will lock their interpreter in the body
+of their C<execute()>, C<join()> bodies etc where user code is run.
+
+=item 1. interpreter at semi-random
+
+As before, except interpreters are kept in a pool and allocated to
+threads as they have tasks to run.  This might work or it might not
+depending on what assumptions the C<PerlInterpreter> makes about the
+thread it is running on.
+
+=item 2. interpreter as a task
+
+The tbb::task is sub-classed, and necessary interpreter
+startup/acquisition happens in those areas.
+
+=back
+
+=head2 Module loaded set in slave interpreters
+
+Again there are some ideas here.
+
+=over
+
+=item 1. automatic module use tracking
+
+It is proposed that threads::tbb keeps a record of all of the modules
+loaded into the current Perl process.  When modules are loaded, it
+keeps track of those modules using an object which lives on @INC.
+
+If you create a C<threads::tbb::init> object with no extra
+information, then the slave threads will load all of the same modules
+as the current interpreter before they are ready for work.
+
+=item 2. explicit module list
+
+You could also specify the modules directly:
+
+  my $init = threads::tbb::init->new( modules => [ ... ] )
+
+This would by-pass this detection and allow for lower thread start-up
+costs.
+
+=back
+
+It should be fast to check that an interpreter is up to date with the
+current list of modules, as it will happen on every task wake-up.
+
+=head2 Shared Data
+
+Worker threads do not share any data with the main process.
+
+All functions are passed as serialized closures initially via
+C<L<Storable>>.  The serialization preserves closures to
+C<threads::tbb::concurrent::> series of thread-safe containers.  All
+other closed over variables are cloned and will take independent value
+in each worker thread.
+
+C<threads::shared> could also work, but it should only be used for
+legacy code as it is Perl's answer to Python's GIL.  This will
+probably special support to work.
+
+=back
+
 
 =head1 CONCEPTS
 
@@ -54,12 +136,29 @@ most threading libraries.  Instead of trying to make things like
 locking easy, you go for thread-safe operations.
 
 This is a bit like map/reduce.  You can see examples of it in
-parallel_for and parallel_reduce, below
+C<L</parallel_for>> and C<L</parallel_reduce>>, described later.
 
 =head2 Memory model
 
-Objects are copied in and out of a slave interpreter, that is only
-ever called as the target of a Storable dump and load.  Storable 
+The blocks which take closures, and the entries in the
+C<threads::tbb::concurrent::> containers are all passed via Storable
+dumps.
+
+=over
+
+=item 1. objects in interpreter
+
+Objects are copied in and out of a slave interpreter, that never runs
+anything (as in C<threads::shared>).  Either as blobs of memory held
+by it, or as an assembled data structure.
+
+=item 2. opaque C<Storable> blobs in array
+
+The serialised objects are kept in a C<tbb::concurrent_*> property of
+the corresponding C<threads::tbb::concurrent::*> classes.
+
+=back
+
 
 =head1 FUNCTIONS
 
@@ -96,10 +195,6 @@ are added.
       }
   } );
 
-[Note: these may have to be re-implementations of the top-level glue
-templates of the same name; if we need to put magic in at the task
-level]
-
 =head2 parallel_reduce
 
 Parallel_reduce is just parallel_for, but with another function to
@@ -127,9 +222,9 @@ Pirate Interjection.
       for my $i ($range->begin .. $range->end) {
           my $val = $array[$i];  # another deep copy
 
-          my $price = $val->compute_cost();
+          $price += $val->compute_cost();
       }
-      return $result;
+      return $price;
   },
   sub {
       # fold a value from a and b to a new value.
@@ -156,46 +251,9 @@ These goals are for the moment LIES
  # adjusts grain size automatically
  my $part_a = threads::tbb::auto_partitioner->new($range_a);
 
- # execute a parallel_for call #TODO #LATER - &body is saved via
- # Storable.
- parallel_for($range_a, \&body, $part_a);
- parallel_for(\@array, \&body);
-
- my @array :tbb_fifo;  # FIFO queue
-
- # another way to do that is to use parallel_reduce
- my $body_func = sub {
-    my $val = shift;
-    # ... transform $val ...
-    return $val + int(rand(10));
- };
- my $join_func = sub {
-    my $val = shift;
-    my $other = shift;
-    [ $val ]
- };
- # simplified usage below
- my $reduced = parallel_reduce(
-           range => $range,
-           identity => $id,
-           partitioner => $part,
-           body => $body_func,
-           join => $join_func,
-           );
-
- # Containers:
- # thread-safe, shared containers backed by
- # concurrent_hash_map and concurrent_vector so you can write
- # to them in your parallel_for function bodies
  my %hash :threads::tbb;
  my @array :threads::tbb;
  my @array :threads::tbb::concurrent_queue;
-
- # More algorithms:
- # parallel_while / parallel_do,
- # pipeline,
- # parallel_invoke,
- # parallel_sort,
 
  # consider: task/group contexts, memory allocation,
  # mutex stuff, timing (tick count)
@@ -228,45 +286,6 @@ interpreter that added them.
 =head2 pipeline / filter
 
 =head2 parallel_sort
-
-=head2 5005threads notes
-
-This module has been back-ported to the 5005threads threading approach
-discontinuted with Perl 5.10.
-
-This is mostly done as a performance test, to see how much of a
-difference this makes.  When running with 5005threads, the module does
-not need to use shared_clone which removes an overhead.  It also uses
-significantly less memory.
-
-=head2 ithreads notes
-
-The new threads are created at the first threads::tbb::init() call, so
-any dynamic loading your thread has done may not be picked up by the
-other threads.
-
-In Perl, sharable variables need to be explicitly marked as shared and
-may not store complex data; so the the range passed in is cloned via
-shared_clone($ref) to the temporary variable space used by the module.
-
-=head2 threads::lite notes
-
-Worker threads can be created via threads::lite using the extra
-arguments to threads::tbb::init();
-
-  threads::tbb::init(
-      modules => [ ... ],
-      threads => int,
-      );
-
-This will create the interpreters for the worker threads using the
-passed modules.
-
-If threads::tbb::init() is called again with new modules, the worker
-threads will load those modules in their own time as well.  It is
-faster to load all the modules at the front before the worker pool is
-created, so try to get the modules => [] right first time, but if you
-don't it should still work.
 
 =cut
 
