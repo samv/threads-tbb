@@ -10,6 +10,14 @@ extern "C" {
 /* include your class headers here */
 #include "tbb.h"
 
+#if __GNUC__ >= 3   /* I guess. */
+#define _warn(msg, e...) warn("# (" __FILE__ ":%d): " msg, __LINE__, ##e)
+#else
+#define _warn warn
+#endif
+
+#define IF_DEBUG(e)
+
 /* We need one MODULE... line to start the actual XS section of the file.
  * The XS++ preprocessor will output its own MODULE and PACKAGE lines */
 MODULE = threads::tbb::init		PACKAGE = threads::tbb::init
@@ -68,32 +76,83 @@ perl_concurrent_vector::new()
 
 SV *
 perl_concurrent_vector::FETCH(i)
-		     int i;
+	int i;
+  PREINIT:
+	SV* mysv;
+  CODE:
+	if (THIS->size() < i+1) {
+		IF_DEBUG(_warn("FETCH(%d): not extended to [%d]", i, i+1));
+		XSRETURN_EMPTY;
+	}
+	mysv = (*THIS)[i];
+	if (mysv) {
+		IF_DEBUG(_warn("FETCH(%d): returning copy of %x", i, mysv));
+		RETVAL = newSVsv(mysv);
+	}
+	else {
+		IF_DEBUG(_warn("FETCH(%d): returning undef", i));
+		XSRETURN_UNDEF;
+	}
+  OUTPUT:
+	RETVAL
+    
 
 void
 perl_concurrent_vector::STORE(i, v)
-		     int i;
-		     SV* v;
+	int i;
+	SV* v;
+  PREINIT:
+        SV* nsv;
+  PPCODE:
+	IF_DEBUG(_warn("STORE (%d, %x)", i, v));
+	IF_DEBUG(_warn(">grow_to_at_least(%d)", i+1));
+	THIS->grow_to_at_least(i+1);
+	SV* o = (*THIS)[i];
+	if (o) {
+		IF_DEBUG(_warn("old = %x", o));
+		SvREFCNT_dec(o);
+	}
+        nsv = newSVsv(v);
+        IF_DEBUG(_warn("new = %x", nsv));
+        (*THIS)[i] = nsv;
 
-int
-perl_concurrent_vector::FETCHSIZE()
+void
+perl_concurrent_vector::STORESIZE( i )
+	int i;
+  PPCODE:
+	IF_DEBUG(_warn("grow_to_at_least(%d)", i));
+	THIS->grow_to_at_least( i );
 
 int
 perl_concurrent_vector::size()
+
+int
+perl_concurrent_vector::FETCHSIZE()
+  CODE:
+	int size = THIS->size();
+	IF_DEBUG(_warn("returning size = %d", size));
+        RETVAL = size;
+  OUTPUT:
+        RETVAL
 
 void
 perl_concurrent_vector::PUSH(...)
   PREINIT:
 	int i;
 	perl_concurrent_vector::iterator idx;
+        SV* x;
   PPCODE:
 	if (items == 2) {
-		THIS->push_back( ST(0) );
+		x = newSVsv(ST(1));
+		THIS->push_back( x );
+		IF_DEBUG(_warn("PUSH (%x)", x));
 	}
         else {
-		idx = (THIS->grow_by( items ));
-		for (i = 0; i < items; i++) {
-			*idx = ST(i);
+		idx = (THIS->grow_by( items-1 ));
+		for (i = 1; i < items; i++) {
+			x = newSVsv(ST(i));
+			IF_DEBUG(_warn("PUSH/%d (%x)", i, x));
+			*idx = x;
 			idx++;
 		}
 	}

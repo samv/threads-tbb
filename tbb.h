@@ -63,14 +63,7 @@ class perl_tbb_blocked_array {
   int grain_size;
 };
 
-class perl_concurrent_vector : public tbb::concurrent_vector<SV*> {
- public:
-  SV* FETCH( int index ) { return operator[]( index ); }
-  void STORE( int index, SV* val ) { operator[]( index ) = val; }
-  int FETCHSIZE( ) { return size(); }
-  void STORESIZE( int size ) { grow_to_at_least(size); }
-  
-};
+typedef tbb::concurrent_vector<SV*> perl_concurrent_vector;
 
 #endif
 
