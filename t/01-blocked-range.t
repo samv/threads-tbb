@@ -18,7 +18,7 @@ my $TERMINAL = ( -t STDOUT );
 
 	eval { threads::tbb::blocked_int->new(1, 10); };
 	ok($@, "Got an exception");
-	diag $@ if $TERMINAL;
+	diag "and it was: ".$@ if $TERMINAL;
 	is($range->is_divisible, 1, "blocked_range<int>::is_divisible [t]");
 
 	$range = threads::tbb::blocked_int->new(1, 4, 5);
