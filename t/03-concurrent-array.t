@@ -35,3 +35,15 @@ push @array, "bas", "bert";
 is(scalar(@array), 4, "PUSH (many) - size increased");
 is($array[2], "bas", "PUSH (many) - slot 2 changed");
 is($array[3], "bert", "PUSH (many) - slot 3 changed");
+
+is($array[4], undef, "nothing in an empty slot");
+is(scalar(@array), 4, "access beyond end does not EXTEND");
+
+$#array = 4;
+is(scalar(@array), 5, "STORESIZE via \$#array");
+is($array[4], undef, "FETCH converts nil to sv_undef OK");
+
+$array[4] = "ben";
+is($array[4], "ben", "Reassign undef to value");
+$array[4] = "bud";
+is($array[4], "bud", "Reassign value to value");
