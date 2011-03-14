@@ -1,6 +1,3 @@
-
-package threads::tbb::concurrent::array;
-
 =head1 NAME
 
 threads::tbb::concurrent::array - shared array variable via tbb::concurrent_vector
@@ -15,7 +12,11 @@ threads::tbb::concurrent::array - shared array variable via tbb::concurrent_vect
 =head1 DESCRIPTION
 
 The concurrent vector is an array that multiple threads can read to
-and write from.  These operations are thread-safe:
+and write from.  It also provides the advantage of using cache-aligned
+array slots, so threads don't conflict on nearby access with each
+other.
+
+The thread-safe operations on this type are:
 
 These are:
 
@@ -25,10 +26,21 @@ This is storing or retrieving a set index.
 
 L<threads::tbb::blocked_int> 
 
+=item PUSH
+
+Adding an item to the end of the list.  There is no concurrent POP or
+SHIFT; see L<threads::tbb::concurrent::fifo> for that.
+
+=item STORESIZE
+
+Supported, calls grow_to_at_least and the grow_by.
+
 =item EXTEND
 
 (TODO) could be implemented using grow_by and then calls to PUSH use
 the grow_by.
+
+=back
 
 =head2 THREAD UNSAFE OPERATIONS
 
@@ -41,6 +53,14 @@ array to safely use them.
 =item FETCHSIZE
 
 Get the length of the array.
+
+=back
+
+=head2 UNSUPPORTED OPERATIONS
+
+=over
+
+
 
 =back
 

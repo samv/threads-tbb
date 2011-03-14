@@ -4,17 +4,24 @@
 #include "tbb/task_scheduler_init.h"
 #include "tbb/blocked_range.h"
 #include "tbb/tbb_stddef.h"
+#include "tbb/queuing_mutex.h"
+#include "tbb/concurrent_vector.h"
+#include <iterator>
 
 extern "C" {
   int array_length(AV* array);
   AV* array_split(AV* array, int m, AV**new_self);
 }
 
+// locks and 
+PerlInterpreter * get_zombie_interp();
+
 class perl_tbb_init : public tbb::task_scheduler_init {
 public:
  perl_tbb_init(int num_thr = automatic) :
   threads(num_thr) {
     initialize( threads );
+    // check the 
   }
   ~perl_tbb_init() {}
 
@@ -54,6 +61,15 @@ class perl_tbb_blocked_array {
  private:
   AV *array;
   int grain_size;
+};
+
+class perl_concurrent_vector : public tbb::concurrent_vector<SV*> {
+ public:
+  SV* FETCH( int index ) { return operator[]( index ); }
+  void STORE( int index, SV* val ) { operator[]( index ) = val; }
+  int FETCHSIZE( ) { return size(); }
+  void STORESIZE( int size ) { grow_to_at_least(size); }
+  
 };
 
 #endif

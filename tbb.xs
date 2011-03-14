@@ -61,24 +61,51 @@ perl_tbb_blocked_int::empty( )
 bool
 perl_tbb_blocked_int::is_divisible( )
 
-MODULE = threads::tbb::blocked_array		PACKAGE = threads::tbb::blocked_array
+MODULE = threads::tbb::concurrent::array	PACKAGE = threads::tbb::concurrent::array
 
-perl_tbb_blocked_array*
-perl_tbb_blocked_array::new( array, grain )
-		     AV* array;
-		     int grain;
+perl_concurrent_vector *
+perl_concurrent_vector::new()
 
-AV*
-perl_tbb_blocked_array::_get_array()
+SV *
+perl_concurrent_vector::FETCH(i)
+		     int i;
 
-bool
-perl_tbb_blocked_array::is_divisible()
-
-int
-perl_tbb_blocked_array::size()
+void
+perl_concurrent_vector::STORE(i, v)
+		     int i;
+		     SV* v;
 
 int
-perl_tbb_blocked_array::grainsize()
+perl_concurrent_vector::FETCHSIZE()
+
+int
+perl_concurrent_vector::size()
+
+void
+perl_concurrent_vector::PUSH(...)
+  PREINIT:
+	int i;
+	perl_concurrent_vector::iterator idx;
+  PPCODE:
+	if (items == 2) {
+		THIS->push_back( ST(0) );
+	}
+        else {
+		idx = (THIS->grow_by( items ));
+		for (i = 0; i < items; i++) {
+			*idx = ST(i);
+			idx++;
+		}
+	}
+
+static perl_concurrent_vector *
+TIEARRAY(classname)
+	char* classname;
+  CODE:
+	RETVAL = new perl_concurrent_vector();
+        ST(0) = sv_newmortal();
+        sv_setref_pv( ST(0), classname, (void*)RETVAL );
+	
 
 MODULE = threads::tbb		PACKAGE = threads::tbb
 
