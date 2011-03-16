@@ -6,6 +6,7 @@
 #include "tbb/tbb_stddef.h"
 #include "tbb/concurrent_vector.h"
 #include "tbb/concurrent_hash_map.h"
+#include "tbb/parallel_for.h"
 #include <iterator>
 
 // these classes are bound via XS to user code.
@@ -14,6 +15,9 @@ class perl_tbb_blocked_int : public tbb::blocked_range<int> {
  perl_tbb_blocked_int( int min, int max, int grain ) :
   tbb::blocked_range<int>(min, max, grain)
     { };
+  perl_tbb_blocked_int( perl_tbb_blocked_int& oth, tbb::split sp )
+    : tbb::blocked_range<int>( oth, sp )
+  { };
 };
 
 typedef tbb::concurrent_vector<SV*> perl_concurrent_vector;
@@ -27,6 +31,17 @@ public:
 private:
   int threads;
   int id;
+};
+
+// these are the types passed to parallel_for et al
+
+// first a very simple one that allows a function to be called by
+// name, with a sub-dividing integer range.
+class perl_map_int_body {
+  const std::string methname;
+ public:
+ perl_map_int_body( std::string methname ) : methname(methname) {};
+  void operator()( const perl_tbb_blocked_int& r ) const;  // doh
 };
 
 /*

@@ -2,4 +2,5 @@ TYPEMAP
 perl_tbb_init*	O_OBJECT
 perl_tbb_blocked_int*	O_OBJECT
 perl_concurrent_vector* O_OBJECT
+perl_map_int_body* O_OBJECT
 std::string	T_STRING

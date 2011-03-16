@@ -165,6 +165,21 @@ TIEARRAY(classname)
         ST(0) = sv_newmortal();
         sv_setref_pv( ST(0), classname, (void*)RETVAL );
 	
+MODULE = threads::tbb::map_int_body	PACKAGE = threads::tbb::map_int_body
+
+perl_map_int_body*
+perl_map_int_body::new( methname )
+  std::string methname;
 
 MODULE = threads::tbb		PACKAGE = threads::tbb
 
+void
+parallel_for( range, body )
+  perl_tbb_blocked_int* range;
+  perl_map_int_body* body;
+PREINIT:
+  perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
+  perl_map_int_body body_copy = perl_map_int_body(*body);
+CODE:
+  
+  parallel_for( range_copy, body_copy );
