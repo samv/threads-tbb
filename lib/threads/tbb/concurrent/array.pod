@@ -1,3 +1,6 @@
+
+package 
+
 =head1 NAME
 
 threads::tbb::concurrent::array - shared array variable via tbb::concurrent_vector
@@ -22,25 +25,20 @@ These are:
 
 =item FETCH & STORE
 
-This is storing or retrieving a set index.
-
-L<threads::tbb::blocked_int> 
+Tied access to the array contents.  If you are using index ranges from
+a L<threads::tbb::blocked_int>, this is safe.
 
 =item PUSH
 
-Adding an item to the end of the list.  There is no concurrent POP or
+Tied access to pushing to the end of the array.  Adding an item or
+list of items to the end of the list.  There is no concurrent POP or
 SHIFT; see L<threads::tbb::concurrent::fifo> for that.
 
-=item STORESIZE
-
-Supported, calls grow_to_at_least and the grow_by.
-
-=item EXTEND
-
-(TODO) could be implemented using grow_by and then calls to PUSH use
-the grow_by.
+=item 
 
 =back
+
+
 
 =head2 THREAD UNSAFE OPERATIONS
 
@@ -53,6 +51,15 @@ array to safely use them.
 =item FETCHSIZE
 
 Get the length of the array.
+
+=item STORESIZE
+
+Supported, calls grow_to_at_least and the grow_by.
+
+=item EXTEND
+
+(TODO) could be implemented using grow_by and then calls to PUSH use
+the grow_by.
 
 =back
 
