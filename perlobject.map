@@ -8,6 +8,9 @@ OUTPUT
 O_OBJECT
 	sv_setref_pv( $arg, CLASS, (void*)$var );
 
+T_STRING
+	$arg = newSVpvn($var.c_str(), $var.length());
+
 INPUT
 
 O_OBJECT
@@ -17,3 +20,6 @@ O_OBJECT
 		warn( \"${Package}::$func_name() -- $var is not a blessed SV reference\" );
 		XSRETURN_UNDEF;
 	}
+
+T_STRING
+	$var = std::string(SvPV_nolen($arg))
