@@ -17,8 +17,16 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock) {
       lock->second = true;
 
       // start an interpreter!  fixme: load some code :)
-      //perl_alloc();
+      perl_alloc();
     }
+}
+
+void perl_tbb_init::mark_master_thread_ok() {
+  perl_interpreter_pool::accessor lock;
+  raw_thread_id thread_id = get_raw_thread_id();
+  fprintf(stderr, "thr %x: am master thread\n", thread_id);
+  tbb_interpreter_pool.insert( lock, thread_id );
+  lock->second = true;
 }
 
 // a parallel_for body class that works with blocked_int range type

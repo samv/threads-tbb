@@ -25,9 +25,11 @@ typedef tbb::concurrent_vector<SV*> perl_concurrent_vector;
 class perl_tbb_init : public tbb::task_scheduler_init {
 public:
  perl_tbb_init(int num_thr = automatic) : threads(num_thr) {
+    mark_master_thread_ok();
     initialize( threads );
   }
   ~perl_tbb_init() { }
+  void mark_master_thread_ok();
 private:
   int threads;
   int id;
