@@ -99,19 +99,21 @@ struct raw_thread_hash_compare {
   }
 };
 
-class perl_interpreter_pool;
-
-// this is our global.  The interpreter pointers themselves are stored
-// only in pthread-specific space for now.
-static perl_interpreter_pool* tbb_interpreter_pool;
+//class perl_interpreter_pool;
 
 // this class just makes it easier to grab the accessor for the map.
 class perl_interpreter_pool : public tbb::concurrent_hash_map<raw_thread_id, bool, raw_thread_hash_compare> {
  public:
-  bool grab( perl_interpreter_pool::accessor& result);
+  void grab( perl_interpreter_pool::accessor& result);
 };
 
-typedef perl_interpreter_pool::accessor tbb_interpreter_lock;
+//typedef tbb::concurrent_hash_map<raw_thread_id, bool, raw_thread_hash_compare> perl_interpreter_pool;
+
+// this is our global.  The interpreter pointers themselves are stored
+// only in pthread-specific space for now.
+static perl_interpreter_pool tbb_interpreter_pool = perl_interpreter_pool();
+
+//typedef perl_interpreter_pool::accessor tbb_interpreter_lock;
 
 
 #endif

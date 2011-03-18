@@ -177,9 +177,8 @@ void
 parallel_for( range, body )
   perl_tbb_blocked_int* range;
   perl_map_int_body* body;
-PREINIT:
-  perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
-  perl_map_int_body body_copy = perl_map_int_body(*body);
-CODE:
-  
-  parallel_for( range_copy, body_copy );
+
+  CODE:
+    perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
+    perl_map_int_body body_copy = perl_map_int_body(*body);
+    parallel_for( range_copy, body_copy );
