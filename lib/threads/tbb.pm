@@ -81,6 +81,11 @@ sub new {
 	return $self;
 }
 
+sub terminate {
+	my $self = shift;
+	$self->{init}->terminate;
+}
+
 sub create_task_scheduler_init {
 	my $self = shift;
 	my $options = shift;

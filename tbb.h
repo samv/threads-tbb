@@ -16,12 +16,12 @@
 #endif
 
 // set to "IF_DEBUG(e) e" to allow debugging messages,
-#define IF_DEBUG(e) e
+#define IF_DEBUG(e)
 
 // then uncomment these to to enable a type of debug message
 //#define DEBUG_PERLCALL
 //#define DEBUG_VECTOR
-#define DEBUG_INIT
+//#define DEBUG_INIT
 
 #ifdef DEBUG_PERLCALL
 #define IF_DEBUG_PERLCALL(msg, e...) IF_DEBUG(_warn(msg, ##e))

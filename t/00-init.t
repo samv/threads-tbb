@@ -8,16 +8,12 @@ use Data::Dumper;
 use Scalar::Util qw(reftype refaddr);
 my $TERMINAL = ( -t STDOUT );
 {
-	my $init = threads::tbb::init->new();
-	ok($init, "made a perl_tbb_init()");
-	isa_ok($init, "threads::tbb::init", "threads::tbb::init->new");
-	diag "ref: ".ref $init, " - ".reftype($init).sprintf("(0x%x)", refaddr($init)) if $TERMINAL;
-	diag Dumper $init if $TERMINAL;
+	my $tbb = threads::tbb->new(4);
+	ok($tbb, "made a perl_tbb_init()");
+	isa_ok($tbb, "threads::tbb", "threads::tbb->new");
+	diag Dumper $tbb if $TERMINAL;
 
-	$init->initialize(4);
-	pass("called initialize");
-
-	$init->terminate;
+	$tbb->terminate;
 	pass("called terminate");
 }
 
