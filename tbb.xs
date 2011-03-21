@@ -25,19 +25,14 @@ void
 perl_tbb_init::initialize( )
 
 void
-set_boot_inc( init, boot_inc_sv )
+set_boot_inc( init, boot_inc )
 	perl_tbb_init* init;
-	SV* boot_inc_sv;
-  PREINIT:
 	HV* boot_inc;
+  PREINIT:
 	HE* he;
 	int libname_len;
 	const char* libname;
   CODE:
-	if (!SvROK(boot_inc_sv)) {
-		croak("bad SV!");
-	}
-	boot_inc = (HV*)(SvRV(boot_inc_sv));
 	hv_iterinit(boot_inc);
 	while (he = hv_iternext(boot_inc)) {
 		libname = hv_iterkey(he, &libname_len);
