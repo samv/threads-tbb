@@ -59,6 +59,24 @@ set_boot_lib( init, boot_lib )
 	}
 
 void
+set_boot_use( init, boot_use )
+	perl_tbb_init* init;
+	AV* boot_use;
+  PREINIT:
+	int i;
+	STRLEN libname_len;
+	const char* libname;
+  CODE:
+	for (i = 0; i <= av_len(boot_use); i++) {
+		SV** slot = av_fetch(boot_use, i, 0);
+		if (!slot || !SvPOK(*slot))
+			continue;
+		libname = SvPV( *slot, libname_len );
+		IF_DEBUG_INIT("use list includes %s", libname);
+		init->boot_use.push_back( std::string( libname, libname_len ));
+	}
+
+void
 perl_tbb_init::DESTROY()
 
 void

@@ -87,8 +87,11 @@ sub create_task_scheduler_init {
 	$self->{init} = threads::tbb::init->new( $options->{threads} || -2 );
 }
 
-sub default_boot_inc { \%BOOT_INC }
-sub default_boot_use { \@BOOT_USE }
+sub default_boot_use {
+	[ (sort { ($a =~ tr{/}{/}) <=> ($b =~ tr{/}{/}) or $a cmp $b }
+		   keys %BOOT_INC),
+	  @BOOT_USE ];
+}
 sub default_boot_lib { \@BOOT_LIB }
 
 sub setup_task_scheduler_init {
@@ -98,11 +101,16 @@ sub setup_task_scheduler_init {
 	if ( $options->{modules} ) {
 		# specifying modules overrides the automatically
 		# collected stuff
-#		$self->{init}->set_boot_use( $options->{modules} );
+		$self->{init}->set_boot_use( [
+			map { my $x = $_; $x =~ s{::}{/}g; "$x.pm" }
+				$options->{modules}
+			] );
+	}
+	elsif ( $options->{requires} ) {
+		$self->{init}->set_boot_use( $options->{requires} );
 	}
 	else {
-		$self->{init}->set_boot_inc( $self->default_boot_inc );
-#		$self->{init}->set_boot_use( $self->default_boot_use );
+		$self->{init}->set_boot_use( $self->default_boot_use );
 	}
 
 	$self->{init}->set_boot_lib(
