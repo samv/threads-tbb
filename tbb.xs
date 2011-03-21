@@ -22,6 +22,30 @@ perl_tbb_init::new( thr )
 	int thr;
 
 void
+perl_tbb_init::initialize( )
+
+void
+set_boot_inc( init, boot_inc_sv )
+	perl_tbb_init* init;
+	SV* boot_inc_sv;
+  PREINIT:
+	HV* boot_inc;
+	HE* he;
+	int libname_len;
+	const char* libname;
+  CODE:
+	if (!SvROK(boot_inc_sv)) {
+		croak("bad SV!");
+	}
+	boot_inc = (HV*)(SvRV(boot_inc_sv));
+	hv_iterinit(boot_inc);
+	while (he = hv_iternext(boot_inc)) {
+		libname = hv_iterkey(he, &libname_len);
+		IF_DEBUG_INIT("children will load %s", libname);
+		init->boot_inc.insert( std::string( libname, libname_len ));
+	}
+
+void
 perl_tbb_init::DESTROY()
 
 void

@@ -16,11 +16,12 @@
 #endif
 
 // set to "IF_DEBUG(e) e" to allow debugging messages,
-#define IF_DEBUG(e)
+#define IF_DEBUG(e) e
 
 // then uncomment these to to enable a type of debug message
 //#define DEBUG_PERLCALL
 //#define DEBUG_VECTOR
+#define DEBUG_INIT
 
 #ifdef DEBUG_PERLCALL
 #define IF_DEBUG_PERLCALL(msg, e...) IF_DEBUG(_warn(msg, ##e))
@@ -32,6 +33,12 @@
 #define IF_DEBUG_VECTOR(msg, e...) IF_DEBUG(_warn(msg, ##e))
 #else
 #define IF_DEBUG_VECTOR(msg, e...)
+#endif
+
+#ifdef DEBUG_INIT
+#define IF_DEBUG_INIT(msg, e...) IF_DEBUG(_warn(msg, ##e))
+#else
+#define IF_DEBUG_INIT(msg, e...)
 #endif
 
 // these classes are bound via XS to user code.
@@ -47,16 +54,22 @@ perl_tbb_blocked_int( perl_tbb_blocked_int& oth, tbb::split sp )
 
 typedef tbb::concurrent_vector<SV*> perl_concurrent_vector;
 
+#include  <set>
+#include  <list>
+
 class perl_tbb_init : public tbb::task_scheduler_init {
 public:
-perl_tbb_init(int num_thr = automatic) : threads(num_thr) {
+	std::set<std::string> boot_inc;
+	std::list<std::string> boot_lib;
+	std::list<std::string> boot_use;
+
+	perl_tbb_init( int num_thr ) : tbb::task_scheduler_init(num_thr) {
 		mark_master_thread_ok();
-		initialize( threads );
 	}
 	~perl_tbb_init() { }
 	void mark_master_thread_ok();
+
 private:
-	int threads;
 	int id;
 };
 

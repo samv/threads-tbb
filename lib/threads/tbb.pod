@@ -10,9 +10,11 @@ threads::tbb - interface to the Threading Building Blocks (TBB) API
  #   - adds to @INC a closure that keeps a track of loaded modules
  use threads::tbb;
 
- # a tbb::task_scheduler_init (C++ name) object; list of modules
- # for slave threads will be updated.
- my $sched = threads::tbb::init->new();
+ # this creates a tbb::task_scheduler_init (C++ name) object
+ my $tbb = threads::tbb->new(
+     threads => 4,  # optional, specify number of workers
+     modules => [ ... ],  # optional, specify modules to load
+ );
 
  # a chunked sequence generator
  my $range_i = threads::tbb::blocked_int->new(1, 40, 5);
@@ -21,7 +23,7 @@ threads::tbb - interface to the Threading Building Blocks (TBB) API
  tie my @data, "threads::tbb::concurrent::array";
 
  # do data parallel work
- parallel_for($range_i, \&execute);
+ $tbb->parallel_for($range_i, \&execute);
 
  # map/reduce
  my $result = parallel_reduce($range_i, \&execute, \&join);
@@ -160,9 +162,9 @@ the corresponding C<threads::tbb::concurrent::*> classes.
 =back
 
 
-=head1 FUNCTIONS
+=head1 METHODS
 
-Some are too good not to export by default.
+These methods are all called on the tbb object.
 
 =head2 parallel_for
 
@@ -175,11 +177,13 @@ are added.
 
   @array = @data;  # deep copy
 
+  my $tbb = threads::tbb->new;
+
   # get a range for that array.  up to 5 at a time.
   my $array_range = threads::tbb::blocked_int->new(0, $#array, 5);
 
   # now run parallel_for
-  parallel_for( $array_range, sub {
+  $tbb->parallel_for( $array_range, sub {
       my $range = shift;
 
       # code may be executed in a thread.
