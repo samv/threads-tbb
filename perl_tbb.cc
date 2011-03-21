@@ -13,7 +13,7 @@ static void xs_init(pTHX) {
 	newXS((char*)"DynaLoader::boot_DynaLoader", boot_DynaLoader, (char*)__FILE__);
 }
 
-static const char* argv[] = {"", "-e", "0"};
+static const char* argv[] = {"", "-Mblib", "-e", "0"};
 static int argc = sizeof argv / sizeof *argv;
 
 }
@@ -21,8 +21,7 @@ static int argc = sizeof argv / sizeof *argv;
 
 #include "tbb.h"
 
-
-void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock) {
+void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tbb_init* init ) {
 	raw_thread_id thread_id = get_raw_thread_id();
 	if (!tbb_interpreter_pool.find( lock, thread_id )) {
 #ifdef DEBUG_PERLCALL
@@ -73,7 +72,7 @@ void perl_map_int_body::operator()( const perl_tbb_blocked_int& r ) const {
 	perl_interpreter_pool::accessor interp;
 	bool ah_true = true;
 	raw_thread_id thread_id = get_raw_thread_id();
-	tbb_interpreter_pool.grab( interp );
+	tbb_interpreter_pool.grab( interp, this->context );
 	IF_DEBUG(_warn("thr %x: processing range [%d,%d)\n", thread_id, r.begin(), r.end() ));
 
 	SV *isv, *inv, *range;
@@ -113,7 +112,8 @@ void perl_map_int_body::operator()( const perl_tbb_blocked_int& r ) const {
 	PUTBACK;
 	IF_DEBUG_PERLCALL( "thr %x: (PUTBACK ok)\n", thread_id );
 
-	//call_pv(this->methname.c_str(), G_VOID|G_EVAL);
+	IF_DEBUG(_warn("thr %x: calling %s\n", thread_id, this->methname.c_str() ));
+	call_pv(this->methname.c_str(), G_VOID|G_EVAL);
 	//   // in case stack was re-allocated
 	SPAGAIN;
 	IF_DEBUG_PERLCALL( "thr %x: (SPAGAIN ok)\n", thread_id );

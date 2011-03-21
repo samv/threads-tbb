@@ -172,13 +172,15 @@ TIEARRAY(classname)
 MODULE = threads::tbb::map_int_body	PACKAGE = threads::tbb::map_int_body
 
 perl_map_int_body*
-perl_map_int_body::new( methname )
+perl_map_int_body::new( context, methname )
+	perl_tbb_init* context;
 	std::string methname;
 
 MODULE = threads::tbb		PACKAGE = threads::tbb
 
 void
-parallel_for( range, body )
+parallel_for( init, range, body )
+	perl_tbb_init* init;
 	perl_tbb_blocked_int* range;
 	perl_map_int_body* body;
 

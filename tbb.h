@@ -21,7 +21,7 @@
 // then uncomment these to to enable a type of debug message
 //#define DEBUG_PERLCALL
 //#define DEBUG_VECTOR
-#define DEBUG_INIT
+//#define DEBUG_INIT
 
 #ifdef DEBUG_PERLCALL
 #define IF_DEBUG_PERLCALL(msg, e...) IF_DEBUG(_warn(msg, ##e))
@@ -79,8 +79,10 @@ private:
 // name, with a sub-dividing integer range.
 class perl_map_int_body {
 	const std::string methname;
+	perl_tbb_init* context;
 public:
-perl_map_int_body( std::string methname ) : methname(methname) {};
+	perl_map_int_body( perl_tbb_init* context, std::string methname ) :
+	methname(methname), context(context) { }
 	void operator()( const perl_tbb_blocked_int& r ) const;  // doh
 };
 
@@ -144,7 +146,7 @@ struct raw_thread_hash_compare {
 // this class just makes it easier to grab the accessor for the map.
 class perl_interpreter_pool : public tbb::concurrent_hash_map<raw_thread_id, bool, raw_thread_hash_compare> {
 public:
-	void grab( perl_interpreter_pool::accessor& result);
+	void grab( perl_interpreter_pool::accessor& result, perl_tbb_init*init);
 };
 
 //typedef tbb::concurrent_hash_map<raw_thread_id, bool, raw_thread_hash_compare> perl_interpreter_pool;

@@ -112,4 +112,12 @@ sub initialize {
 	$self->{init}->initialize;
 }
 
+sub threads::tbb::map_int_body::somemethod {
+	my $self = shift;
+	my $range = shift;
+
+	print STDERR "$self, $range\n";
+	print STDERR "# range: [".$range->begin.",".$range->end.")\n";
+}
+
 1;
