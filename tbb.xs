@@ -19,7 +19,7 @@ PROTOTYPES: DISABLE
 
 perl_tbb_init*
 perl_tbb_init::new( thr )
-	      int thr;
+	int thr;
 
 void
 perl_tbb_init::DESTROY()
@@ -32,9 +32,9 @@ MODULE = threads::tbb::blocked_int		PACKAGE = threads::tbb::blocked_int
 
 perl_tbb_blocked_int*
 perl_tbb_blocked_int::new( low, high, grain )
-	      int low;
-	      int high;
-	      int grain;
+	int low;
+	int high;
+	int grain;
 
 int
 perl_tbb_blocked_int::size( )
@@ -154,16 +154,16 @@ MODULE = threads::tbb::map_int_body	PACKAGE = threads::tbb::map_int_body
 
 perl_map_int_body*
 perl_map_int_body::new( methname )
-  std::string methname;
+	std::string methname;
 
 MODULE = threads::tbb		PACKAGE = threads::tbb
 
 void
 parallel_for( range, body )
-  perl_tbb_blocked_int* range;
-  perl_map_int_body* body;
+	perl_tbb_blocked_int* range;
+	perl_map_int_body* body;
 
   CODE:
-    perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
-    perl_map_int_body body_copy = perl_map_int_body(*body);
-    parallel_for( range_copy, body_copy );
+	perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
+	perl_map_int_body body_copy = perl_map_int_body(*body);
+	parallel_for( range_copy, body_copy );

@@ -36,28 +36,28 @@
 
 // these classes are bound via XS to user code.
 class perl_tbb_blocked_int : public tbb::blocked_range<int> {
- public:
- perl_tbb_blocked_int( int min, int max, int grain ) :
-  tbb::blocked_range<int>(min, max, grain)
-    { };
-  perl_tbb_blocked_int( perl_tbb_blocked_int& oth, tbb::split sp )
-    : tbb::blocked_range<int>( oth, sp )
-  { };
+public:
+perl_tbb_blocked_int( int min, int max, int grain ) :
+	tbb::blocked_range<int>(min, max, grain)
+	{ };
+perl_tbb_blocked_int( perl_tbb_blocked_int& oth, tbb::split sp )
+	: tbb::blocked_range<int>( oth, sp )
+	{ };
 };
 
 typedef tbb::concurrent_vector<SV*> perl_concurrent_vector;
 
 class perl_tbb_init : public tbb::task_scheduler_init {
 public:
- perl_tbb_init(int num_thr = automatic) : threads(num_thr) {
-    mark_master_thread_ok();
-    initialize( threads );
-  }
-  ~perl_tbb_init() { }
-  void mark_master_thread_ok();
+perl_tbb_init(int num_thr = automatic) : threads(num_thr) {
+		mark_master_thread_ok();
+		initialize( threads );
+	}
+	~perl_tbb_init() { }
+	void mark_master_thread_ok();
 private:
-  int threads;
-  int id;
+	int threads;
+	int id;
 };
 
 // these are the types passed to parallel_for et al
@@ -65,10 +65,10 @@ private:
 // first a very simple one that allows a function to be called by
 // name, with a sub-dividing integer range.
 class perl_map_int_body {
-  const std::string methname;
- public:
- perl_map_int_body( std::string methname ) : methname(methname) {};
-  void operator()( const perl_tbb_blocked_int& r ) const;  // doh
+	const std::string methname;
+public:
+perl_map_int_body( std::string methname ) : methname(methname) {};
+	void operator()( const perl_tbb_blocked_int& r ) const;  // doh
 };
 
 /*
@@ -107,31 +107,31 @@ class perl_map_int_body {
 // for the concurrent_hash_map: necessary transformation and
 // comparison functions.
 struct raw_thread_hash_compare {
-  static size_t hash( const raw_thread_id& x ) {
-    size_t h = 0;
-    if (sizeof(raw_thread_id) != sizeof(size_t) ) {
-      int i = 0;
-      for (const char* s = (char*)x; i<sizeof(raw_thread_id); ++s) {
-	h = (h*17) ^ *s;
-	i++;
-      }
-    }
-    else {
-      h = *( (size_t*)x );
-    }
-    return h;
-  }
-  static bool equal( const raw_thread_id& a, const raw_thread_id& b) {
-    return (a == b);
-  }
+	static size_t hash( const raw_thread_id& x ) {
+		size_t h = 0;
+		if (sizeof(raw_thread_id) != sizeof(size_t) ) {
+			int i = 0;
+			for (const char* s = (char*)x; i<sizeof(raw_thread_id); ++s) {
+				h = (h*17) ^ *s;
+				i++;
+			}
+		}
+		else {
+			h = *( (size_t*)x );
+		}
+		return h;
+	}
+	static bool equal( const raw_thread_id& a, const raw_thread_id& b) {
+		return (a == b);
+	}
 };
 
 //class perl_interpreter_pool;
 
 // this class just makes it easier to grab the accessor for the map.
 class perl_interpreter_pool : public tbb::concurrent_hash_map<raw_thread_id, bool, raw_thread_hash_compare> {
- public:
-  void grab( perl_interpreter_pool::accessor& result);
+public:
+	void grab( perl_interpreter_pool::accessor& result);
 };
 
 //typedef tbb::concurrent_hash_map<raw_thread_id, bool, raw_thread_hash_compare> perl_interpreter_pool;
