@@ -9,6 +9,31 @@
 #include "tbb/parallel_for.h"
 #include <iterator>
 
+#if __GNUC__ >= 3   /* I guess. */
+#define _warn(msg, e...) warn("# (" __FILE__ ":%d): " msg, __LINE__, ##e)
+#else
+#define _warn warn
+#endif
+
+// set to "IF_DEBUG(e) e" to allow debugging messages,
+#define IF_DEBUG(e)
+
+// then uncomment these to to enable a type of debug message
+//#define DEBUG_PERLCALL
+//#define DEBUG_VECTOR
+
+#ifdef DEBUG_PERLCALL
+#define IF_DEBUG_PERLCALL(msg, e...) IF_DEBUG(_warn(msg, ##e))
+#else
+#define IF_DEBUG_PERLCALL(msg, e...)
+#endif
+
+#ifdef DEBUG_VECTOR
+#define IF_DEBUG_VECTOR(msg, e...) IF_DEBUG(_warn(msg, ##e))
+#else
+#define IF_DEBUG_VECTOR(msg, e...)
+#endif
+
 // these classes are bound via XS to user code.
 class perl_tbb_blocked_int : public tbb::blocked_range<int> {
  public:

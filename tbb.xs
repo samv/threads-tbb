@@ -1,5 +1,6 @@
 #ifdef __cplusplus
 extern "C" {
+#define PERL_NO_GET_CONTEXT /* we want efficiency! */
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
@@ -10,31 +11,15 @@ extern "C" {
 /* include your class headers here */
 #include "tbb.h"
 
-#if __GNUC__ >= 3   /* I guess. */
-#define _warn(msg, e...) warn("# (" __FILE__ ":%d): " msg, __LINE__, ##e)
-#else
-#define _warn warn
-#endif
-
-#define IF_DEBUG(e)
-
 /* We need one MODULE... line to start the actual XS section of the file.
  * The XS++ preprocessor will output its own MODULE and PACKAGE lines */
 MODULE = threads::tbb::init		PACKAGE = threads::tbb::init
 
-## The include line executes xspp with the supplied typemap and the
-## xsp interface code for our class.
-## It will include the output of the xsubplusplus run.
-## INCLUDE_COMMAND: $^X -MExtUtils::XSpp::Cmd -e xspp -- --typemap=typemap.xsp task_scheduler_init.xsp
-
 PROTOTYPES: DISABLE
 
 perl_tbb_init*
-perl_tbb_init::new()
-
-void
-perl_tbb_init::initialize( nthr )
-      int nthr;
+perl_tbb_init::new( thr )
+	      int thr;
 
 void
 perl_tbb_init::DESTROY()
@@ -81,16 +66,16 @@ perl_concurrent_vector::FETCH(i)
 	SV* mysv;
   CODE:
 	if (THIS->size() < i+1) {
-		IF_DEBUG(_warn("FETCH(%d): not extended to [%d]", i, i+1));
+		IF_DEBUG_VECTOR("FETCH(%d): not extended to [%d]", i, i+1);
 		XSRETURN_EMPTY;
 	}
 	mysv = (*THIS)[i];
 	if (mysv) {
-		IF_DEBUG(_warn("FETCH(%d): returning copy of %x", i, mysv));
+		IF_DEBUG_VECTOR("FETCH(%d): returning copy of %x", i, mysv);
 		RETVAL = newSVsv(mysv);
 	}
 	else {
-		IF_DEBUG(_warn("FETCH(%d): returning undef", i));
+		IF_DEBUG_VECTOR("FETCH(%d): returning undef", i);
 		XSRETURN_UNDEF;
 	}
   OUTPUT:
@@ -104,23 +89,23 @@ perl_concurrent_vector::STORE(i, v)
   PREINIT:
         SV* nsv;
   PPCODE:
-	IF_DEBUG(_warn("STORE (%d, %x)", i, v));
-	IF_DEBUG(_warn(">grow_to_at_least(%d)", i+1));
+	IF_DEBUG_VECTOR("STORE (%d, %x)", i, v);
+	IF_DEBUG_VECTOR(">grow_to_at_least(%d)", i+1);
 	THIS->grow_to_at_least(i+1);
 	SV* o = (*THIS)[i];
 	if (o) {
-		IF_DEBUG(_warn("old = %x", o));
+		IF_DEBUG_VECTOR("old = %x", o);
 		SvREFCNT_dec(o);
 	}
         nsv = newSVsv(v);
-        IF_DEBUG(_warn("new = %x", nsv));
+        IF_DEBUG_VECTOR("new = %x", nsv);
         (*THIS)[i] = nsv;
 
 void
 perl_concurrent_vector::STORESIZE( i )
 	int i;
   PPCODE:
-	IF_DEBUG(_warn("grow_to_at_least(%d)", i));
+	IF_DEBUG_VECTOR("grow_to_at_least(%d)", i);
 	THIS->grow_to_at_least( i );
 
 int
@@ -130,7 +115,7 @@ int
 perl_concurrent_vector::FETCHSIZE()
   CODE:
 	int size = THIS->size();
-	IF_DEBUG(_warn("returning size = %d", size));
+	IF_DEBUG_VECTOR("returning size = %d", size);
         RETVAL = size;
   OUTPUT:
         RETVAL
@@ -145,13 +130,13 @@ perl_concurrent_vector::PUSH(...)
 	if (items == 2) {
 		x = newSVsv(ST(1));
 		THIS->push_back( x );
-		IF_DEBUG(_warn("PUSH (%x)", x));
+		IF_DEBUG_VECTOR("PUSH (%x)", x);
 	}
         else {
 		idx = (THIS->grow_by( items-1 ));
 		for (i = 1; i < items; i++) {
 			x = newSVsv(ST(i));
-			IF_DEBUG(_warn("PUSH/%d (%x)", i, x));
+			IF_DEBUG_VECTOR("PUSH/%d (%x)", i, x);
 			*idx = x;
 			idx++;
 		}
