@@ -8,21 +8,26 @@ extern "C" {
 
 void boot_DynaLoader(pTHX_ CV* cv);
 
-static void xs_init(pTHX) {
-	dXSUB_SYS;
-	newXS((char*)"DynaLoader::boot_DynaLoader", boot_DynaLoader, (char*)__FILE__);
-}
-
-static const char* argv[] = {"", "-Mblib", "-e", "0"};
-static int argc = sizeof argv / sizeof *argv;
-
 }
 #endif
 
 #include "tbb.h"
 
+using namespace std;
+using namespace tbb;
+
+static void xs_init(pTHX) {
+	dXSUB_SYS;
+	newXS((char*)"DynaLoader::boot_DynaLoader", boot_DynaLoader, (char*)__FILE__);
+}
+
+static const char* argv[] = {"", "-e", "0"};
+static int argc = sizeof argv / sizeof *argv;
+
 void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tbb_init* init ) {
 	raw_thread_id thread_id = get_raw_thread_id();
+	PerlInterpreter* my_perl;
+	bool fresh = false;
 	if (!tbb_interpreter_pool.find( lock, thread_id )) {
 #ifdef DEBUG_PERLCALL
 		IF_DEBUG(fprintf(stderr, "thr %x: first post!\n", thread_id));
@@ -31,31 +36,92 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 		lock->second = true;
 
 		// start an interpreter!  fixme: load some code :)
-		PerlInterpreter* my_perl = perl_alloc();
+		my_perl = perl_alloc();
 #ifdef DEBUG_PERLCALL
 		IF_DEBUG(fprintf(stderr, "thr %x: allocated an interpreter\n", thread_id));
 #endif
+		// probably unnecessary
 		PERL_SET_CONTEXT(my_perl);
 		perl_construct(my_perl);
-		IF_DEBUG_PERLCALL("thr %x: perl_construct\n", thread_id);
+
+		// execute END blocks in perl_destruct
 		PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
 		perl_parse(my_perl, xs_init, argc, (char**)argv, NULL);
-		IF_DEBUG_PERLCALL( "thr %x: perl_parse\n", thread_id);
 
-		// we also need to synchronise this perl's @INC with ours...
+		// signal to the threads::tbb module that it's a child
+		SV* worker_sv = get_sv("threads::tbb::worker", GV_ADD|GV_ADDMULTI);
+		//SvUPGRADE(worker_sv, SVt_IV);
+		sv_setiv(worker_sv, 1);
+
+		// setup the @INC
+		init->setup_worker_inc(aTHX);
+
 		ENTER;
 		load_module(PERL_LOADMOD_NOIMPORT, newSVpv("threads::tbb", 0), NULL, NULL);
 		LEAVE;
-		IF_DEBUG_PERLCALL( "thr %x: load_module\n", thread_id);
+		fresh = true;
+	}
+	else {
+		my_perl = PERL_GET_THX;
+	}
+	
+	AV* worker_av = get_av("threads::tbb::worker", GV_ADD|GV_ADDMULTI);
+	// maybe required...
+	//av_extend(worker_av, init->seq);
+	SV* flag = *av_fetch( worker_av, init->seq, 1 );
+	if (!SvOK(flag)) {
+		if (!fresh) {
+			init->setup_worker_inc(aTHX);
+		}
+		init->load_modules(my_perl);
+		sv_setiv(flag, 1);
 	}
 }
 
 void perl_tbb_init::mark_master_thread_ok() {
 	perl_interpreter_pool::accessor lock;
 	raw_thread_id thread_id = get_raw_thread_id();
-	IF_DEBUG_PERLCALL( "thr %x: am master thread\n", thread_id);
+	IF_DEBUG_INIT( "thr %x: am master thread\n", thread_id);
 	tbb_interpreter_pool.insert( lock, thread_id );
 	lock->second = true;
+}
+
+void perl_tbb_init::setup_worker_inc( pTHX ) {
+	// first, set up the boot_lib
+	list<string>::const_reverse_iterator lrit;
+	
+	// grab @INC and %INC
+	AV* INC_a = get_av("INC", GV_ADD|GV_ADDWARN);
+
+	// add all the lib paths to our INC
+	for ( lrit = boot_lib.rbegin(); lrit != boot_lib.rend(); lrit++ ) {
+		bool found = false;
+		IF_DEBUG(fprintf(stderr, "thr %x: checking @INC for %s\n", get_raw_thread_id(),lrit->c_str() ));
+		for ( int i = 0; i <= av_len(INC_a); i++ ) {
+			SV** slot = av_fetch(INC_a, i, 0);
+			if (!slot || !SvPOK(*slot))
+				continue;
+			if ( lrit->compare( SvPV_nolen(*slot) ) )
+				continue;
+
+			found = true;
+			break;
+		}
+		if (found) {
+			IF_DEBUG(fprintf(stderr, "thr %x: %s in @INC already\n", get_raw_thread_id(),lrit->c_str() ));
+		}
+		else {
+			av_unshift( INC_a, 1 );
+			SV* new_path = newSVpv(lrit->c_str(), 0);
+			IF_DEBUG(fprintf(stderr, "thr %x: added %s to @INC\n", get_raw_thread_id(),lrit->c_str() ));
+			SvREFCNT_inc(new_path);
+			av_store( INC_a, 0, new_path );
+		}
+	}
+}
+
+void perl_tbb_init::load_modules( pTHX ) {
+	HV* INC_h = get_hv("INC", GV_ADD|GV_ADDWARN);
 }
 
 #ifdef PERL_IMPLICIT_CONTEXT
@@ -121,7 +187,8 @@ void perl_map_int_body::operator()( const perl_tbb_blocked_int& r ) const {
 	//   // remember to PUTBACK; if we remove values from the stack
 
 	if (SvTRUE(ERRSV)) {
-		IF_DEBUG_PERLCALL( "thr %x: ($@ thrown; %s)\n", thread_id, SvPV_nolen(ERRSV) );
+		warn( "error processing range [%d,%d); %s",
+		      r.begin(), r.end(), SvPV_nolen(ERRSV) );
 		POPs;
 		PUTBACK;
 	}

@@ -21,7 +21,7 @@
 // then uncomment these to to enable a type of debug message
 //#define DEBUG_PERLCALL
 //#define DEBUG_VECTOR
-//#define DEBUG_INIT
+#define DEBUG_INIT
 
 #ifdef DEBUG_PERLCALL
 #define IF_DEBUG_PERLCALL(msg, e...) IF_DEBUG(_warn(msg, ##e))
@@ -57,17 +57,29 @@ typedef tbb::concurrent_vector<SV*> perl_concurrent_vector;
 #include  <set>
 #include  <list>
 
+#include "tbb/spin_mutex.h"
+typedef tbb::spin_mutex      mutex_t;
+
+static int perl_tbb_init_seq = 0;
+static mutex_t perl_tbb_init_seq_mutex;
+
 class perl_tbb_init : public tbb::task_scheduler_init {
 public:
 	std::set<std::string> boot_inc;
 	std::list<std::string> boot_lib;
 	std::list<std::string> boot_use;
+	int seq;  // process-unique ID
 
 	perl_tbb_init( int num_thr ) : tbb::task_scheduler_init(num_thr) {
 		mark_master_thread_ok();
+		mutex_t::scoped_lock lock(perl_tbb_init_seq_mutex);
+		seq = perl_tbb_init_seq++;
 	}
 	~perl_tbb_init() { }
 	void mark_master_thread_ok();
+
+	void setup_worker_inc( pTHX );
+	void load_modules( pTHX );
 
 private:
 	int id;

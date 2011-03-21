@@ -19,6 +19,8 @@ our @BOOT_LIB;
 our %BOOT_INC;
 our @BOOT_USE;
 
+our $worker;  # set in XS code if we're a worker thread
+
 BEGIN {
 	our @EXPORT = qw(parallel_for);
 
@@ -28,7 +30,7 @@ BEGIN {
 
 	# also, figure out what -Mlib=... arguments we need to pass to
 	# child threads.
-	{
+	if ( !$worker ) {
 		# the allocated perls will respect these variables; we
 		# are just doing this to 
 		#local ( $ENV{PERL5LIB} ) = "";
@@ -39,14 +41,15 @@ BEGIN {
 		for my $path (@INC) {
 			next if ref $path;
 			if ( !grep { $_ eq $path } @default_inc ) {
+				print STDERR "Adding $path to \@BOOT_LIB\n";
 				unshift @BOOT_LIB, $path;
 			}
 		}
-	}
 
-	# add a 'use' tracker to INC - keeps the order that modules
-	# are loaded in.
-	unshift @INC, \&track_use;
+		# add a 'use' tracker to INC - keeps the order that
+		# modules are loaded in.
+		unshift @INC, \&track_use;
+	}
 }
 
 sub track_use {
@@ -102,9 +105,9 @@ sub setup_task_scheduler_init {
 #		$self->{init}->set_boot_use( $self->default_boot_use );
 	}
 
-#	$self->{init}->set_boot_lib(
-#		$options->{lib} || $self->default_boot_lib
-#	);
+	$self->{init}->set_boot_lib(
+		$options->{lib} || $self->default_boot_lib
+	);
 }
 
 sub initialize {

@@ -41,6 +41,24 @@ set_boot_inc( init, boot_inc )
 	}
 
 void
+set_boot_lib( init, boot_lib )
+	perl_tbb_init* init;
+	AV* boot_lib;
+  PREINIT:
+	int i;
+	STRLEN libname_len;
+	const char* libname;
+  CODE:
+	for (i = 0; i <= av_len(boot_lib); i++) {
+		SV** slot = av_fetch(boot_lib, i, 0);
+		if (!slot || !SvPOK(*slot))
+			continue;
+		libname = SvPV( *slot, libname_len );
+		IF_DEBUG_INIT("INC includes %s", libname);
+		init->boot_lib.push_back( std::string( libname, libname_len ));
+	}
+
+void
 perl_tbb_init::DESTROY()
 
 void
