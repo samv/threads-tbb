@@ -1,0 +1,86 @@
+=head1 NAME
+
+threads::tbb::concurrent:: - namespace for concurrent TBB containers
+
+=head1 SYNOPSIS
+
+ use threads::tbb;
+
+ tie my @array, "threads::tbb::concurrent::array";
+ $array[0] = $val;
+ push @array, @items;
+
+ tie my @queue, "threads::tbb::concurrent::queue";
+ push @queue, $val;
+ my $val = shift @queue;
+
+ tie my %hash, "threads::tbb::concurrent::hash";
+
+ my $slot = \$hash{key};
+ say "it exists" if $slot->exists;  # extension
+
+ # fetch / store
+ print "it is set to : ".$$slot;
+ $$slot = "value";
+
+ # erasing a key
+ $slot->delete;  # extension
+
+ # concurrent iteration - not safe for update
+ my ($key, $value) = each %hash;
+
+ # concurrent iteration - safe for update
+ my $iterator = tied(%hash)->iterator;
+ my ($key, $slot) = $iterator->();
+
+=head1 DESCRIPTION
+
+The C<threads::tbb::concurrent::> series of modules wrap respective
+tbb concurrent classes.  Or, at least they will once they are written.
+For now only L<threads::tbb::concurrent::array> exists.
+
+Note that they are only concurrent if you restrict yourself to the
+concurrent APIs.  Other ways of accessing the containers may result in
+programs with race conditions.
+
+=head2 Lazy deep copying
+
+This is currently just a theory, but it might be possible for these
+concurrent structures to record the C<PerlInterpreter*> that wrote to
+them, and just save the pointer.  Then, if they are requested by a
+different thread, then the deep copy happens.
+
+The problem with that is that the deep copy is not a perl internals
+thing; it requires running C<Storable::dump>, but passing in foreign
+pointers.  This might work or it might be a recipe for segfaults; to
+be confirmed via experiment.
+
+If it does turn out to be stable, then it would help reduce the
+overhead that a threading program has to overcome to break even; eg,
+if the single-threaded case is more than 100% slower, then you need
+more than 2 cores just to break "even"; and that's before you take
+into consideration that the program may not scale beyond a given
+number of cores.  This would mean that this overhead is delegated to
+the worker threads; they might not be able to carry out work at full
+speed compared to the main thread, but at least they're not impeding
+it by making it waste time dumping data that it might have to simply
+load again itself to process.
+
+Another interesting experiment at this point would be to try building
+under -Duse5005threads, and seeing if things are relatively stable.
+It's possible that the branch is too far buried to be servicable, but
+a useful data point nonetheless.
+
+If foreign-structure dumping turns out not to be stable then there are
+two main approaches.  Either dump everything and just document that
+the size of data put in and out may be a limiting factor for many
+users, or potentially queue requests for the originating thread to
+process the dump, then yield or even spin.
+
+Queuing requests for other threads to safely marshall the data in and
+out could prove problematic and lead to deadlocks, so probably the
+best approach is to support both lazy and immediate deep copies by an
+option set on the container.
+
+=cut
+
