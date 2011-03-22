@@ -152,7 +152,7 @@ static bool aTHX;
 
 // a parallel_for body class that works with blocked_int range type
 // only.
-void perl_map_int_body::operator()( const perl_tbb_blocked_int& r ) const {
+void perl_for_int_func::operator()( const perl_tbb_blocked_int& r ) const {
 	perl_interpreter_pool::accessor interp;
 	bool ah_true = true;
 	raw_thread_id thread_id = get_raw_thread_id();
@@ -160,7 +160,7 @@ void perl_map_int_body::operator()( const perl_tbb_blocked_int& r ) const {
 	IF_DEBUG(_warn("thr %x: processing range [%d,%d)\n", thread_id, r.begin(), r.end() ));
 
 	SV *isv, *inv, *range;
-	perl_map_int_body body_copy = *this;
+	perl_for_int_func body_copy = *this;
 	perl_tbb_blocked_int r_copy = r;
 
 	// this declares and loads 'my_perl' variables from TLS
@@ -181,7 +181,7 @@ void perl_map_int_body::operator()( const perl_tbb_blocked_int& r ) const {
 	IF_DEBUG_PERLCALL( "thr %x: (PUSHMARK ok)\n", thread_id );
 
 	isv = newSV(0);
-	inv = sv_2mortal( sv_setref_pv(isv, "threads::tbb::map_int_body", &body_copy ));
+	inv = sv_2mortal( sv_setref_pv(isv, "threads::tbb::for_int_func", &body_copy ));
 	SvREFCNT_inc(inv);
 	XPUSHs(inv);
 	IF_DEBUG_PERLCALL( "thr %x: (map_int_body ok)\n", thread_id );
@@ -196,8 +196,8 @@ void perl_map_int_body::operator()( const perl_tbb_blocked_int& r ) const {
 	PUTBACK;
 	IF_DEBUG_PERLCALL( "thr %x: (PUTBACK ok)\n", thread_id );
 
-	IF_DEBUG(_warn("thr %x: calling %s\n", thread_id, this->methname.c_str() ));
-	call_pv(this->methname.c_str(), G_VOID|G_EVAL);
+	IF_DEBUG(_warn("thr %x: calling %s\n", thread_id, this->funcname.c_str() ));
+	call_pv(this->funcname.c_str(), G_VOID|G_EVAL);
 	//   // in case stack was re-allocated
 	SPAGAIN;
 	IF_DEBUG_PERLCALL( "thr %x: (SPAGAIN ok)\n", thread_id );

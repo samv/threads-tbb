@@ -11,9 +11,6 @@ extern "C" {
 /* include your class headers here */
 #include "tbb.h"
 
-perl_concurrent_vector* global_array = new perl_concurrent_vector();
-
-
 /* We need one MODULE... line to start the actual XS section of the file.
  * The XS++ preprocessor will output its own MODULE and PACKAGE lines */
 MODULE = threads::tbb::init		PACKAGE = threads::tbb::init
@@ -210,12 +207,16 @@ TIEARRAY(classname)
         ST(0) = sv_newmortal();
         sv_setref_pv( ST(0), classname, (void*)RETVAL );
 	
-MODULE = threads::tbb::map_int_body	PACKAGE = threads::tbb::map_int_body
+MODULE = threads::tbb::for_int_func	PACKAGE = threads::tbb::for_int_func
 
-perl_map_int_body*
-perl_map_int_body::new( context, methname )
+perl_for_int_func*
+perl_for_int_func::new( context, funcname, array )
 	perl_tbb_init* context;
-	std::string methname;
+	std::string funcname;
+	perl_concurrent_vector* array;
+
+perl_concurrent_vector*
+perl_for_int_func::get_array()
 
 MODULE = threads::tbb		PACKAGE = threads::tbb
 
@@ -223,25 +224,9 @@ void
 parallel_for( init, range, body )
 	perl_tbb_init* init;
 	perl_tbb_blocked_int* range;
-	perl_map_int_body* body;
+	perl_for_int_func* body;
 
   CODE:
 	perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
-	perl_map_int_body body_copy = perl_map_int_body(*body);
+	perl_for_int_func body_copy = perl_for_int_func(*body);
 	parallel_for( range_copy, body_copy );
-
-SV*
-get_superglobal()
-  CODE:
-	SV* rsv = newSV(0);
-	sv_setref_pv( rsv, "threads::tbb::concurrent::array", (void*)global_array );
-	RETVAL = rsv;
-  OUTPUT:
-	RETVAL
-
-void
-set_superglobal( array )
-        perl_concurrent_vector* array;
-  CODE:
-	global_array = array;
-

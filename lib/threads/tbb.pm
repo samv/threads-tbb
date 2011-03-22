@@ -127,19 +127,4 @@ sub initialize {
 	$self->{init}->initialize;
 }
 
-use Data::Dumper;
-use Time::HiRes qw(sleep);
-sub threads::tbb::map_int_body::somemethod {
-	my $self = shift;
-	my $range = shift;
-	my $array = &get_superglobal;
-
-	print STDERR "# range: [".$range->begin.",".$range->end.")\n";
-	for ( my $i = $range->begin; $i < $range->end; $i++ ) {
-		my $item = $array->FETCH($i);
-		print STDERR "Got: ".Dumper($item);
-		sleep 0.1;
-	}
-}
-
 1;

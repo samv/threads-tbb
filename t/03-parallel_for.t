@@ -5,6 +5,7 @@
 
 use Test::More no_plan;
 use strict;
+use lib "t";
 BEGIN { use_ok("threads::tbb") };
 
 tie my @array, "threads::tbb::concurrent::array";
@@ -17,16 +18,16 @@ threads::tbb::set_superglobal(tied @array);
 
 my $tbb = threads::tbb->new(
 	threads => 4,
-	modules => [],
+	modules => [ "StaticFunc" ],
 );
 
 my $range = threads::tbb::blocked_int->new(0, scalar(@array), 2);
 is($range->end, 10, "Made a blocked range");
 
-my $body = threads::tbb::map_int_body->new(
-	$tbb->{init}, "threads::tbb::map_int_body::somemethod",
+my $body = threads::tbb::for_int_func->new(
+	$tbb->{init}, "StaticFunc::myhandler", tied(@array),
 );
-isa_ok($body, "threads::tbb::map_int_body", "new map_int_body");
+isa_ok($body, "threads::tbb::for_int_func", "new for_int_func");
 
 parallel_for($tbb->{init}, $range, $body);
 pass("didn't crash!");

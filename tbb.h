@@ -8,6 +8,11 @@
 #include "tbb/concurrent_hash_map.h"
 #include "tbb/parallel_for.h"
 #include <iterator>
+#include <set>
+#include <list>
+
+#include "tbb/spin_mutex.h"
+typedef tbb::spin_mutex      mutex_t;
 
 #if __GNUC__ >= 3   /* I guess. */
 #define _warn(msg, e...) warn("# (" __FILE__ ":%d): " msg, __LINE__, ##e)
@@ -16,13 +21,13 @@
 #endif
 
 // set to "IF_DEBUG(e) e" to allow debugging messages,
-#define IF_DEBUG(e) e
+#define IF_DEBUG(e)
 
 // then uncomment these to to enable a type of debug message
 //#define DEBUG_PERLCALL
-#define DEBUG_VECTOR
+//#define DEBUG_VECTOR
 //#define DEBUG_INIT
-#define DEBUG_CLONE
+//#define DEBUG_CLONE
 
 #ifdef DEBUG_PERLCALL
 #define IF_DEBUG_PERLCALL(msg, e...) IF_DEBUG(_warn(msg, ##e))
@@ -48,7 +53,11 @@
 #define IF_DEBUG_CLONE(msg, e...)
 #endif
 
-// these classes are bound via XS to user code.
+//**
+//*  Perl-mapped classes
+//*/
+
+// threads::tbb::blocked_int
 class perl_tbb_blocked_int : public tbb::blocked_range<int> {
 public:
 perl_tbb_blocked_int( int min, int max, int grain ) :
@@ -59,6 +68,10 @@ perl_tbb_blocked_int( perl_tbb_blocked_int& oth, tbb::split sp )
 	{ };
 };
 
+// threads::tbb::concurrent::array
+class perl_concurrent_slot;
+class perl_concurrent_vector : public tbb::concurrent_vector<perl_concurrent_slot> { };
+
 class perl_concurrent_slot {
 public:
 	SV* thingy;
@@ -68,18 +81,9 @@ public:
 		: thingy(thingy), owner(owner) {};
 };
 
-class perl_concurrent_vector : public tbb::concurrent_vector<perl_concurrent_slot> {
-};
-
-#include  <set>
-#include  <list>
-
-#include "tbb/spin_mutex.h"
-typedef tbb::spin_mutex      mutex_t;
-
+// threads::tbb::init
 static int perl_tbb_init_seq = 0;
 static mutex_t perl_tbb_init_seq_mutex;
-
 class perl_tbb_init : public tbb::task_scheduler_init {
 public:
 	std::list<std::string> boot_lib;
@@ -103,24 +107,29 @@ private:
 
 // these are the types passed to parallel_for et al
 
-// first a very simple one that allows a function to be called by
+// threads::tbb::for_int_func
+// first a very simple one that allows an entry-point function to be called by
 // name, with a sub-dividing integer range.
-class perl_map_int_body {
-	const std::string methname;
+
+class perl_for_int_func {
+	const std::string funcname;
 	perl_tbb_init* context;
+	perl_concurrent_vector* xarray;
 public:
-	perl_map_int_body( perl_tbb_init* context, std::string methname ) :
-	methname(methname), context(context) { }
+	perl_for_int_func( perl_tbb_init* context, std::string funcname, perl_concurrent_vector* xarray ) :
+	funcname(funcname), context(context), xarray(xarray) { };
+	perl_concurrent_vector* get_array() { return xarray; };
 	void operator()( const perl_tbb_blocked_int& r ) const;  // doh
 };
+
 
 /*
  * the following code concerns itself with getting a new Perl
  * interpreter at the beginning of a task body.
  *
  * usage:
- *  tbb_interpreter_lock interp;
- *  tbb_interpreter_pool->grab( interp );
+ *  perl_interpreter_pool::accessor interp;
+ *  tbb_interpreter_pool->grab( interp, init );
  *
  * it has to:
  *    1. check that this real thread has an interpreter or not
@@ -169,18 +178,12 @@ struct raw_thread_hash_compare {
 	}
 };
 
-//class perl_interpreter_pool;
-
-// this class just makes it easier to grab the accessor for the map.
 class perl_interpreter_pool : public tbb::concurrent_hash_map<raw_thread_id, bool, raw_thread_hash_compare> {
 public:
 	void grab( perl_interpreter_pool::accessor& result, perl_tbb_init*init);
 };
 
-//typedef tbb::concurrent_hash_map<raw_thread_id, bool, raw_thread_hash_compare> perl_interpreter_pool;
-
-// this is our global.  The interpreter pointers themselves are stored
-// only in pthread-specific space for now.
+// the global pointer to the interpreter locks
 static perl_interpreter_pool tbb_interpreter_pool = perl_interpreter_pool();
 
 //typedef perl_interpreter_pool::accessor tbb_interpreter_lock;
