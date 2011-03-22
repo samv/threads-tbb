@@ -16,12 +16,13 @@
 #endif
 
 // set to "IF_DEBUG(e) e" to allow debugging messages,
-#define IF_DEBUG(e)
+#define IF_DEBUG(e) e
 
 // then uncomment these to to enable a type of debug message
 //#define DEBUG_PERLCALL
-//#define DEBUG_VECTOR
+#define DEBUG_VECTOR
 //#define DEBUG_INIT
+#define DEBUG_CLONE
 
 #ifdef DEBUG_PERLCALL
 #define IF_DEBUG_PERLCALL(msg, e...) IF_DEBUG(_warn(msg, ##e))
@@ -39,6 +40,12 @@
 #define IF_DEBUG_INIT(msg, e...) IF_DEBUG(_warn(msg, ##e))
 #else
 #define IF_DEBUG_INIT(msg, e...)
+#endif
+
+#ifdef DEBUG_CLONE
+#define IF_DEBUG_CLONE(msg, e...) IF_DEBUG(_warn(msg, ##e))
+#else
+#define IF_DEBUG_CLONE(msg, e...)
 #endif
 
 // these classes are bound via XS to user code.
@@ -178,6 +185,9 @@ public:
 static perl_interpreter_pool tbb_interpreter_pool = perl_interpreter_pool();
 
 //typedef perl_interpreter_pool::accessor tbb_interpreter_lock;
+
+// the crazy clone function :)
+SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl);
 
 
 #endif

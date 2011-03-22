@@ -11,6 +11,9 @@ extern "C" {
 /* include your class headers here */
 #include "tbb.h"
 
+perl_concurrent_vector* global_array = new perl_concurrent_vector();
+
+
 /* We need one MODULE... line to start the actual XS section of the file.
  * The XS++ preprocessor will output its own MODULE and PACKAGE lines */
 MODULE = threads::tbb::init		PACKAGE = threads::tbb::init
@@ -119,15 +122,23 @@ perl_concurrent_vector::FETCH(i)
 	int i;
   PREINIT:
 	SV* mysv;
+	perl_concurrent_slot* slot;
   CODE:
 	if (THIS->size() < i+1) {
 		IF_DEBUG_VECTOR("FETCH(%d): not extended to [%d]", i, i+1);
 		XSRETURN_EMPTY;
 	}
-	mysv = (*THIS)[i].thingy;
+	slot = &(*THIS)[i];
+	mysv = slot->thingy;
 	if (mysv) {
-		IF_DEBUG_VECTOR("FETCH(%d): returning copy of %x", i, mysv);
-		RETVAL = newSVsv(mysv);
+		if (slot->owner == my_perl) {
+			IF_DEBUG_VECTOR("FETCH(%d): returning copy of %x", i, mysv);
+			RETVAL = newSVsv(mysv);
+		}
+		else {
+			IF_DEBUG_CLONE("ABOUT TO CLONE SV: %x", mysv);
+			RETVAL = clone_other_sv( my_perl, mysv, slot->owner );
+		}
 	}
 	else {
 		IF_DEBUG_VECTOR("FETCH(%d): returning undef", i);
@@ -150,9 +161,18 @@ perl_concurrent_vector::STORE(i, v)
 	SV* o = (*THIS)[i].thingy;
 	if (o) {
 		IF_DEBUG_VECTOR("old = %x", o);
-		SvREFCNT_dec(o);
+		if (my_perl == (*THIS)[i].owner) {
+			SvREFCNT_dec(o);
+		}
+		else {
+			// for now, leak.  if this works,
+			// then interpreters will need a freelist for
+			// them to decrement when they next run/finish
+			// a task.
+		}
 	}
         nsv = newSVsv(v);
+	SvREFCNT_inc(nsv);
         IF_DEBUG_VECTOR("new = %x", nsv);
 	(*THIS)[i] = perl_concurrent_slot(my_perl, nsv);
 
@@ -225,3 +245,19 @@ parallel_for( init, range, body )
 	perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
 	perl_map_int_body body_copy = perl_map_int_body(*body);
 	parallel_for( range_copy, body_copy );
+
+SV*
+get_superglobal()
+  CODE:
+	SV* rsv = newSV(0);
+	sv_setref_pv( rsv, "threads::tbb::concurrent::array", (void*)global_array );
+	RETVAL = rsv;
+  OUTPUT:
+	RETVAL
+
+void
+set_superglobal( array )
+        perl_concurrent_vector* array;
+  CODE:
+	global_array = array;
+
