@@ -52,7 +52,17 @@ perl_tbb_blocked_int( perl_tbb_blocked_int& oth, tbb::split sp )
 	{ };
 };
 
-typedef tbb::concurrent_vector<SV*> perl_concurrent_vector;
+class perl_concurrent_slot {
+public:
+	SV* thingy;
+	PerlInterpreter* owner;
+	perl_concurrent_slot( ) {};
+	perl_concurrent_slot( PerlInterpreter* owner, SV* thingy )
+		: thingy(thingy), owner(owner) {};
+};
+
+class perl_concurrent_vector : public tbb::concurrent_vector<perl_concurrent_slot> {
+};
 
 #include  <set>
 #include  <list>

@@ -124,7 +124,7 @@ perl_concurrent_vector::FETCH(i)
 		IF_DEBUG_VECTOR("FETCH(%d): not extended to [%d]", i, i+1);
 		XSRETURN_EMPTY;
 	}
-	mysv = (*THIS)[i];
+	mysv = (*THIS)[i].thingy;
 	if (mysv) {
 		IF_DEBUG_VECTOR("FETCH(%d): returning copy of %x", i, mysv);
 		RETVAL = newSVsv(mysv);
@@ -147,14 +147,14 @@ perl_concurrent_vector::STORE(i, v)
 	IF_DEBUG_VECTOR("STORE (%d, %x)", i, v);
 	IF_DEBUG_VECTOR(">grow_to_at_least(%d)", i+1);
 	THIS->grow_to_at_least(i+1);
-	SV* o = (*THIS)[i];
+	SV* o = (*THIS)[i].thingy;
 	if (o) {
 		IF_DEBUG_VECTOR("old = %x", o);
 		SvREFCNT_dec(o);
 	}
         nsv = newSVsv(v);
         IF_DEBUG_VECTOR("new = %x", nsv);
-        (*THIS)[i] = nsv;
+	(*THIS)[i] = perl_concurrent_slot(my_perl, nsv);
 
 void
 perl_concurrent_vector::STORESIZE( i )
@@ -184,7 +184,7 @@ perl_concurrent_vector::PUSH(...)
   PPCODE:
 	if (items == 2) {
 		x = newSVsv(ST(1));
-		THIS->push_back( x );
+		THIS->push_back( perl_concurrent_slot(my_perl, x) );
 		IF_DEBUG_VECTOR("PUSH (%x)", x);
 	}
         else {
@@ -192,7 +192,8 @@ perl_concurrent_vector::PUSH(...)
 		for (i = 1; i < items; i++) {
 			x = newSVsv(ST(i));
 			IF_DEBUG_VECTOR("PUSH/%d (%x)", i, x);
-			*idx = x;
+			idx->thingy = x;
+			idx->owner = my_perl;
 			idx++;
 		}
 	}
