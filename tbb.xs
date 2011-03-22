@@ -28,22 +28,6 @@ void
 perl_tbb_init::initialize( )
 
 void
-set_boot_inc( init, boot_inc )
-	perl_tbb_init* init;
-	HV* boot_inc;
-  PREINIT:
-	HE* he;
-	int libname_len;
-	const char* libname;
-  CODE:
-	hv_iterinit(boot_inc);
-	while (he = hv_iternext(boot_inc)) {
-		libname = hv_iterkey(he, &libname_len);
-		IF_DEBUG_INIT("children will load %s", libname);
-		init->boot_inc.insert( std::string( libname, libname_len ));
-	}
-
-void
 set_boot_lib( init, boot_lib )
 	perl_tbb_init* init;
 	AV* boot_lib;

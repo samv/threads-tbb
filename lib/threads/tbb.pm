@@ -41,7 +41,6 @@ BEGIN {
 		for my $path (@INC) {
 			next if ref $path;
 			if ( !grep { $_ eq $path } @default_inc ) {
-				print STDERR "Adding $path to \@BOOT_LIB\n";
 				unshift @BOOT_LIB, $path;
 			}
 		}
@@ -108,7 +107,7 @@ sub setup_task_scheduler_init {
 		# collected stuff
 		$self->{init}->set_boot_use( [
 			map { my $x = $_; $x =~ s{::}{/}g; "$x.pm" }
-				$options->{modules}
+				@{$options->{modules}}
 			] );
 	}
 	elsif ( $options->{requires} ) {

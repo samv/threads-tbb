@@ -82,7 +82,6 @@ static mutex_t perl_tbb_init_seq_mutex;
 
 class perl_tbb_init : public tbb::task_scheduler_init {
 public:
-	std::set<std::string> boot_inc;
 	std::list<std::string> boot_lib;
 	std::list<std::string> boot_use;
 	int seq;  // process-unique ID

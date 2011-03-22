@@ -122,6 +122,24 @@ void perl_tbb_init::setup_worker_inc( pTHX ) {
 
 void perl_tbb_init::load_modules( pTHX ) {
 	HV* INC_h = get_hv("INC", GV_ADD|GV_ADDWARN);
+
+	std::list<std::string>::const_iterator mod;
+
+	for ( mod = boot_use.begin(); mod != boot_use.end(); mod++ ) {
+		// skip if already in INC
+		const char* modfilename = (*mod).c_str();
+		size_t modfilename_len = strlen(modfilename);
+		SV** slot = hv_fetch( INC_h, modfilename, modfilename_len, 0 );
+		if (slot) {
+			IF_DEBUG_INIT("skipping %s; already loaded", modfilename);
+		}
+		else {
+			IF_DEBUG_INIT("require '%s'", modfilename);
+			ENTER;
+			require_pv(modfilename);
+			LEAVE;
+		}
+	}
 }
 
 #ifdef PERL_IMPLICIT_CONTEXT
