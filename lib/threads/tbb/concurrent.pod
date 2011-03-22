@@ -48,12 +48,19 @@ programs with race conditions.
 This is currently just a theory, but it might be possible for these
 concurrent structures to record the C<PerlInterpreter*> that wrote to
 them, and just save the pointer.  Then, if they are requested by a
-different thread, then the deep copy happens.
+different thread, a deep copy happens then and there, carried out by
+the worker thread and not the main thread.  So long as there is no use
+of the actual state machine of the foreign interpreter, or side
+effects on data structures it "owns", it should be relatively safe.
+Of course if the interpreter that sent the data violates expectations
+by modifying the data structures, all bets are off.
 
-The problem with that is that the deep copy is not a perl internals
-thing; it requires running C<Storable::dump>, but passing in foreign
-pointers.  This might work or it might be a recipe for segfaults; to
-be confirmed via experiment.
+The initial implementation of the deep copying has very much the same
+limitations as threads::shared - in that only "pure" perl objects can
+be passed through.  "pure" in this sense does include various XS
+types.  But not, for instance, inside-out objects, MAD properties,
+tied objects or other forms of magic.  Filehandles I do intend to
+support, but they are not implemented yet.
 
 If it does turn out to be stable, then it would help reduce the
 overhead that a threading program has to overcome to break even; eg,
