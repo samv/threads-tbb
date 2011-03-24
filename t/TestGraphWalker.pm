@@ -4,6 +4,7 @@ package TestGraphWalker;
 use Data::Dumper;
 
 use Time::HiRes qw(sleep);
+#use Devel::Peek;
 
 sub doTest {
 	my $body = shift;
@@ -15,8 +16,14 @@ sub doTest {
 	print STDERR "Processing [".$range->begin.",".$range->end."), worker = ".($threads::tbb::worker ? "YES" : "NO")."\n" if -t STDOUT;
 	$|=1;
 	for my $idx ( $range->begin .. $range->end-1 ) {
+		my $fetch_item = $array->FETCH($idx);
+		#print STDERR "Fetched item $idx:\n";
+		#Dump($fetch_item);
 		my $num = $unwrap->($array->FETCH($idx));
-		$array->STORE($idx, $wrap->( $num/3 ));
+		my $store_item = $wrap->( $num/3 );
+		#print STDERR "Storing item $idx:\n";
+		#Dump($store_item);
+		$array->STORE($idx, $store_item);
 	}
 	sleep rand(0.2);
 	print STDERR "Done processing [".$range->begin.",".$range->end."), worker = ".($threads::tbb::worker ? "YES" : "NO")."\n" if -t STDOUT;
@@ -48,9 +55,9 @@ sub TestN {
 
 	tie my @vector, "threads::tbb::concurrent::array";
 
-	push @vector, map { $Wrap->($_) } 1..200;
+	push @vector, map { $Wrap->($_) } 1..4;
 
-	my $range = threads::tbb::blocked_int->new(0, $#vector+1, 5);
+	my $range = threads::tbb::blocked_int->new(0, $#vector+1, 1);
 	my $body = threads::tbb::for_int_func->new(
 		$tbb->{init}, __PACKAGE__."::Test${n}Func", tied(@vector),
 	);
@@ -87,5 +94,9 @@ make_test sub { "$_[0]" }, sub { 0+$_[0] }, "Test PV";
 use Storable qw(freeze thaw);
 make_test sub { freeze { foo => 1.0*$_[0] } }, sub { (thaw $_[0])->{foo} }, "Test Storable";
 make_test sub { my $x = 1.0*$_[0]; $x }, sub { 1.0*$_[0] }, "Test NV";
+
+make_test sub { \$_[0] }, sub { ${$_[0]} }, "Test REF SCALAR";
+
+#make_test sub { +{ foo => 1.0*$_[0] } }, sub { $_[0]->{foo} }, "Test HV";
 
 1;

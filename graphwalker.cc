@@ -54,6 +54,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 		todo.pop_back();
 		item = done.find( it );
 		bool isnew = (item == done.end());
+		//IF_DEBUG_CLONE("   SV is %s", (isnew ? "new" : "repeat"));
 		if (!isnew && (*item).second.built) {
 			// seen before.
 			IF_DEBUG_CLONE("   seen, built");
@@ -70,15 +71,24 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 			// fixme: $x = \$x circular refs
 			target = done.find( SvRV(it) );
 			if (target == done.end()) {
+				IF_DEBUG_CLONE("   refers to unseen ref");
 				// nothing, so remember to init self later.
 				todo.push_back(it);
 				todo.push_back(SvRV(it));
 			}
 			else {
+				IF_DEBUG_CLONE("   refers to seen ref");
 				// target exists!  set the ref
 				SvUPGRADE((*item).second.tsv, SVt_RV);
 				SvRV_set((*item).second.tsv, (*target).second.tsv);
+				SvROK_on((*item).second.tsv);
 				SvREFCNT_inc((*target).second.tsv);
+				sv_2mortal((*item).second.tsv);
+				
+				IF_DEBUG_CLONE("   %x now refers to %x: ",
+					       (*item).second.tsv,
+					       (*target).second.tsv
+					);
 
 				// and here we bless things
 				if (SvOBJECT(SvRV(it))) {
@@ -192,11 +202,11 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				break;
 			case SVt_IV:
 				IF_DEBUG_CLONE("     => IV (%d)", SvIV(it));
-				done[it] = graph_walker_slot(newSViv(SvIV(it)), true);
+				done[it] = graph_walker_slot(sv_2mortal(newSViv(SvIV(it))), true);
 				break;
 			case SVt_NV:
 				IF_DEBUG_CLONE("     => NV (%g)", SvNV(it));
-				done[it] = graph_walker_slot(newSVnv(SvNV(it)), true);
+				done[it] = graph_walker_slot(sv_2mortal(newSVnv(SvNV(it))), true);
 				break;
 			case SVt_PVNV:	
 				IF_DEBUG_CLONE("     => PVNV (%s, %g)", SvPV_nolen(it), SvNV(it));
@@ -210,7 +220,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 			xx:
 				STRLEN len;
 				str = SvPV(it, len);
-				done[it] = graph_walker_slot(newSVpv( str, len ), true);
+				done[it] = graph_walker_slot(sv_2mortal(newSVpv( str, len )), true);
 				break;
 			default:
 				croak("unknown SV type %d SVt_PVIV = %d; cannot marshall through concurrent container",
