@@ -164,14 +164,21 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				IF_DEBUG_CLONE("     => HV");
 				// hash
 				if (isnew) {
+					IF_DEBUG_CLONE("   new HV");
 					done[it] = graph_walker_slot((SV*)newHV());
 				}
 
 				// side-effect free hash iteration :)
 				num = HvMAX(it);
 				contents = HvARRAY(it);
+				IF_DEBUG_CLONE("   walking over %d slots at contents @%x", num, contents);
+				IF_DEBUG_CLONE("   (PL_sv_placeholder = %x)", &PL_sv_placeholder);
 				for (int i = 0; i < num; i++ ) {
+					IF_DEBUG_CLONE("   contents[%d] = %x", i, contents[i]);
+					if (!contents[i])
+						continue;
 					SV* val = HeVAL(contents[i]);
+					IF_DEBUG_CLONE("   val = %x", val);
 					// thankfully, PL_sv_placeholder is a superglobal.
 					if (val == &PL_sv_placeholder)
 						continue;
@@ -179,6 +186,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 					target = done.find(val);
 					if (target == done.end()) {
 						if (all_found) {
+							IF_DEBUG_CLONE("   contains unseen slot values");
 							todo.push_back(it);
 							all_found = false;
 						}
@@ -186,9 +194,13 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 					}
 				}
 				if (all_found) {
+					IF_DEBUG_CLONE("   no unseen slot values");
 					HV* hv = (HV*)done[it].tsv;
 					for (int i = 0; i < num; i++ ) {
 						HE* hent = contents[i];
+						if (!hent) {
+							continue;
+						}
 						SV* val = HeVAL( hent );
 						if (val == &PL_sv_placeholder)
 							continue;
@@ -196,9 +208,15 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 						const char* key = HePV( hent, key_len );
 						
 						target = done.find(val);
-						hv_store( hv, key, key_len, (*target).second.tsv, 0 );
+						IF_DEBUG_CLONE("   hv_fetch(%x, '%s', %d, 1)", hv, key, key_len);
+						SV**slot = hv_fetch( hv, key, key_len, 1); 
+						IF_DEBUG_CLONE("   => %x", done[val].tsv);
+						*slot = done[val].tsv;
+						SvREFCNT_inc(*slot);
+						//hv_store( hv, key, key_len, (*target).second.tsv, 0 );
 					}
 					sv_2mortal((SV*)hv);
+					//SvREFCNT_inc((SV*)hv);
 					done[it].built = true;
 				}
 				break;

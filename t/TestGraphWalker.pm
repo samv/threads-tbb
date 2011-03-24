@@ -103,6 +103,6 @@ make_test sub { my $x = 1.0*$_[0]; $x }, sub { 1.0*$_[0] }, "Test NV";
 make_test sub { \$_[0] }, sub { ${$_[0]} }, "Test REF SCALAR";
 
 make_test sub { [ foo => 1.0*$_[0] ] }, sub { $_[0]->[1] }, "Test AV";
-#make_test sub { +{ foo => 1.0*$_[0] } }, sub { $_[0]->{foo} }, "Test HV";
+make_test sub { +{ foo => 1.0*$_[0] } }, sub { $_[0]->{foo} }, "Test HV";
 
 1;
