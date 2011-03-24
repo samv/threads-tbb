@@ -121,6 +121,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				IF_DEBUG_CLONE("     => AV");
 				// array ... seen?
 				if (isnew) {
+					IF_DEBUG_CLONE("   new AV");
 					done[it] = graph_walker_slot((SV*)newAV());
 				}
 
@@ -132,6 +133,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 					target = done.find(*slot);
 					if (target == done.end()) {
 						if (all_found) {
+							IF_DEBUG_CLONE("   contains unseen slot values");
 							todo.push_back(it);
 							all_found = false;
 						}
@@ -139,15 +141,21 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 					}
 				}
 				if (all_found) {
+					IF_DEBUG_CLONE("   no unseen slot values");
 					AV* av = (AV*)done[it].tsv;
-					av_extend(av, av_len((AV*)it));
+					IF_DEBUG_CLONE("   unshift av, %d", av_len((AV*)it)+1);
+					av_unshift(av, av_len((AV*)it)+1);
 					for (int i = 0; i <= av_len((AV*)it); i++ ) {
 						SV** slot = av_fetch((AV*)it, i, 0);
 						if (!slot)
 							continue;
-						target = done.find(*slot);
-						av_store( av, i, (*target).second.tsv );
+						SV* targsv = done[*slot].tsv;
+						SV** slot2 = av_fetch( av, i, 1 );
+						*slot2 = targsv;
+						SvREFCNT_inc(targsv);
+						IF_DEBUG_CLONE("      slot[%d] = %x (refcnt = %d, type = %d, pok = %d, iok = %d)", i, targsv, SvREFCNT(targsv), SvTYPE(targsv), SvPOK(targsv)?1:0, SvIOK(targsv)?1:0);
 					}
+					sv_2mortal((SV*)av);
 					done[it].built = true;
 				}
 				break;
@@ -190,6 +198,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 						target = done.find(val);
 						hv_store( hv, key, key_len, (*target).second.tsv, 0 );
 					}
+					sv_2mortal((SV*)hv);
 					done[it].built = true;
 				}
 				break;
@@ -226,6 +235,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				croak("unknown SV type %d SVt_PVIV = %d; cannot marshall through concurrent container",
 				      SvTYPE(it), SVt_PVNV);
 			}
+			IF_DEBUG_CLONE("    => %x / t=%d / rc=%d", done[it].tsv, SvTYPE(done[it].tsv), SvREFCNT(done[it].tsv));
 		}
 	}
 

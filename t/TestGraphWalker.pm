@@ -55,7 +55,12 @@ sub TestN {
 
 	tie my @vector, "threads::tbb::concurrent::array";
 
-	push @vector, map { $Wrap->($_) } 1..4;
+	push @vector, map {
+		#print STDERR "Storing item ".($_-1).":\n";
+		my $item = $Wrap->($_);
+		#Dump $item;
+		$item;
+	} 1..4;
 
 	my $range = threads::tbb::blocked_int->new(0, $#vector+1, 1);
 	my $body = threads::tbb::for_int_func->new(
@@ -97,6 +102,7 @@ make_test sub { my $x = 1.0*$_[0]; $x }, sub { 1.0*$_[0] }, "Test NV";
 
 make_test sub { \$_[0] }, sub { ${$_[0]} }, "Test REF SCALAR";
 
+make_test sub { [ foo => 1.0*$_[0] ] }, sub { $_[0]->[1] }, "Test AV";
 #make_test sub { +{ foo => 1.0*$_[0] } }, sub { $_[0]->{foo} }, "Test HV";
 
 1;
