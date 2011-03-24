@@ -1,6 +1,4 @@
 
-package 
-
 =head1 NAME
 
 threads::tbb::concurrent::array - shared array variable via tbb::concurrent_vector

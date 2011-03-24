@@ -113,12 +113,18 @@ perl_concurrent_vector::FETCH(i)
 	mysv = slot->thingy;
 	if (mysv) {
 		if (slot->owner == my_perl) {
-			IF_DEBUG_VECTOR("FETCH(%d): returning copy of %x", i, mysv);
-			RETVAL = newSVsv(mysv);
+			RETVAL = newSV(0);
+			SvSetSV_nosteal(RETVAL, mysv);
+			//sv_2mortal(RETVAL);
+			IF_DEBUG_VECTOR("FETCH(%d): returning %x: copied to %x (refcnt = %d)", i, mysv, RETVAL, SvREFCNT(RETVAL));
 		}
 		else {
-			IF_DEBUG_CLONE("ABOUT TO CLONE SV: %x", mysv);
-			RETVAL = clone_other_sv( my_perl, mysv, slot->owner );
+			IF_DEBUG_CLONE("ABOUT TO CLONE SV: %x (refcnt = %d)", mysv, SvREFCNT(mysv));
+			SV* rsv = clone_other_sv( my_perl, mysv, slot->owner );
+			//sv_2mortal(rsv);
+			SvREFCNT_inc(rsv);
+			IF_DEBUG_VECTOR("FETCH(%d): returning clone = %x (refcnt = %d)", i, rsv, SvREFCNT(rsv));
+			RETVAL = rsv;
 		}
 	}
 	else {
@@ -136,13 +142,15 @@ perl_concurrent_vector::STORE(i, v)
   PREINIT:
         SV* nsv;
   PPCODE:
-	IF_DEBUG_VECTOR("STORE (%d, %x)", i, v);
-	IF_DEBUG_VECTOR(">grow_to_at_least(%d)", i+1);
-	THIS->grow_to_at_least(i+1);
-	SV* o = (*THIS)[i].thingy;
+	IF_DEBUG_VECTOR("STORE (%d, %x) (refcnt = %d)", i, v, SvREFCNT(v));
+	IF_DEBUG_VECTOR("%x->grow_to_at_least(%d)", THIS, i+1);
+	THIS->grow_to_at_least( i+1 );
+	perl_concurrent_slot* slot = &((*THIS)[i]);
+	SV* o = slot->thingy;
 	if (o) {
 		IF_DEBUG_VECTOR("old = %x", o);
-		if (my_perl == (*THIS)[i].owner) {
+		if (my_perl == slot->owner) {
+			IF_DEBUG_VECTOR("SvREFCNT_dec(%x) (refcnt = %d)", o, SvREFCNT(o));
 			SvREFCNT_dec(o);
 		}
 		else {
@@ -152,10 +160,13 @@ perl_concurrent_vector::STORE(i, v)
 			// a task.
 		}
 	}
-        nsv = newSVsv(v);
-	SvREFCNT_inc(nsv);
-        IF_DEBUG_VECTOR("new = %x", nsv);
-	(*THIS)[i] = perl_concurrent_slot(my_perl, nsv);
+        nsv = newSV(0);
+	SvSetSV_nosteal(nsv, v);
+	//SvREFCNT_inc(nsv);
+	IF_DEBUG_VECTOR("new = %x (refcnt = %d)", nsv, SvREFCNT(nsv));
+	slot->owner = my_perl;
+	slot->thingy = nsv;
+	
 
 void
 perl_concurrent_vector::STORESIZE( i )
@@ -184,14 +195,16 @@ perl_concurrent_vector::PUSH(...)
         SV* x;
   PPCODE:
 	if (items == 2) {
-		x = newSVsv(ST(1));
+		x = newSV(0);
+		SvSetSV_nosteal(x, ST(1));
 		THIS->push_back( perl_concurrent_slot(my_perl, x) );
 		IF_DEBUG_VECTOR("PUSH (%x)", x);
 	}
         else {
 		idx = (THIS->grow_by( items-1 ));
 		for (i = 1; i < items; i++) {
-			x = newSVsv(ST(i));
+			x = newSV(0);
+			SvSetSV_nosteal(x, ST(i));
 			IF_DEBUG_VECTOR("PUSH/%d (%x)", i, x);
 			idx->thingy = x;
 			idx->owner = my_perl;

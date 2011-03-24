@@ -8,6 +8,8 @@ extern "C" {
 
 }
 
+#include "tbb.h"
+
 
 /* this is a recursive clone, limited to the core Perl types; similar
  * to threads::shared::shared_clone, except:
@@ -48,17 +50,21 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 	SV* it;
 	while (todo.size()) {
 		it = todo.back();
+		IF_DEBUG_CLONE("cloning %x", it);
 		todo.pop_back();
 		item = done.find( it );
 		bool isnew = (item == done.end());
 		if (!isnew && (*item).second.built) {
 			// seen before.
+			IF_DEBUG_CLONE("   seen, built");
 			continue;
 		}
 		if (SvROK(it)) {
+			IF_DEBUG_CLONE("   SV is ROK (%s)", sv_reftype(it,0));
 			if (isnew) {
 				// '0' means that the item is on todo
 				done[it] = graph_walker_slot(newSV(0));
+				IF_DEBUG_CLONE("   SV is new");
 			}
 
 			// fixme: $x = \$x circular refs
@@ -97,9 +103,12 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 			int num;
 			HE** contents;
 			const char* str;
-
+			STRLEN len;
+			SV* nv;
+			IF_DEBUG_CLONE("   SV is not ROK but type %d", SvTYPE(it));
 			switch (SvTYPE(it)) {
 			case SVt_PVAV:
+				IF_DEBUG_CLONE("     => AV");
 				// array ... seen?
 				if (isnew) {
 					done[it] = graph_walker_slot((SV*)newAV());
@@ -134,6 +143,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				break;
 
 			case SVt_PVHV:
+				IF_DEBUG_CLONE("     => HV");
 				// hash
 				if (isnew) {
 					done[it] = graph_walker_slot((SV*)newHV());
@@ -181,34 +191,35 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				croak("cannot put GLOB reference in a concurrent container");
 				break;
 			case SVt_IV:
+				IF_DEBUG_CLONE("     => IV (%d)", SvIV(it));
 				done[it] = graph_walker_slot(newSViv(SvIV(it)), true);
 				break;
 			case SVt_NV:
-				SV* nv;
-				if (SvPOK(it)) {
-					// dualvar.  start with the PV.
-					STRLEN len;
-					const char* str = SvPV(it, len);
-					nv = newSVpv( str, len );
-					SvNOK_on(nv);
-					SvNV_set(nv, SvNV(it));
-				}
-				else {
-					nv = newSVnv(SvNV(it));
-				}
-				done[it] = graph_walker_slot(nv, true);
+				IF_DEBUG_CLONE("     => NV (%g)", SvNV(it));
+				done[it] = graph_walker_slot(newSVnv(SvNV(it)), true);
 				break;
+			case SVt_PVNV:	
+				IF_DEBUG_CLONE("     => PVNV (%s, %g)", SvPV_nolen(it), SvNV(it));
+				goto xx;
+			case SVt_PVIV:
+				IF_DEBUG_CLONE("     => PVIV (%s, %d)", SvPV_nolen(it), SvIV(it));
+				goto xx;
+		
 			case SVt_PV:
+				IF_DEBUG_CLONE("     => PV (%s)", SvPV_nolen(it));
+			xx:
 				STRLEN len;
 				str = SvPV(it, len);
 				done[it] = graph_walker_slot(newSVpv( str, len ), true);
 				break;
 			default:
-				croak("unknown SV type %d; cannot marshall through concurrent container",
-				      SvTYPE(it));
+				croak("unknown SV type %d SVt_PVIV = %d; cannot marshall through concurrent container",
+				      SvTYPE(it), SVt_PVNV);
 			}
 		}
 	}
 
-	return done[sv].tsv;
+	SV* rv = done[sv].tsv;
+	IF_DEBUG_CLONE("clone returning %x", rv);
+	return rv;
 }

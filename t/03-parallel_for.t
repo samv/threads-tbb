@@ -14,8 +14,6 @@ push @array, qw(Parker Lady_Penelope Brains Virgil_Tracy Jeff_Tracey
 		John_Tracy Kyrano The_Hood Tin_Tin Alan_Tracy);
 is(@array, 10, "put 10 strings in it");
 
-threads::tbb::set_superglobal(tied @array);
-
 my $tbb = threads::tbb->new(
 	threads => 4,
 	modules => [ "StaticFunc" ],
@@ -31,3 +29,4 @@ isa_ok($body, "threads::tbb::for_int_func", "new for_int_func");
 
 parallel_for($tbb->{init}, $range, $body);
 pass("didn't crash!");
+
