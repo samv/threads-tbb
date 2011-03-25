@@ -93,12 +93,13 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				// and here we bless things
 				if (SvOBJECT(SvRV(it))) {
 					HV* pkg = SvSTASH(SvRV(it));
+					IF_DEBUG_CLONE("    blessed be!");
 					target = done.find((SV*)pkg);
 					if (target == done.end()) {
-						char * const name = HvNAME_get(pkg);
-						//HV* lpkg = gv_stashpvs(name, 1);
-						//done[(SV*)pkg] = graph_walker_slot((SV*)lpkg, true);
-						//sv_bless( (*item).second.tsv, lpkg );
+						const char * pkgname = HvNAME_get(pkg);
+						HV* lpkg = gv_stashpv(pkgname, GV_ADD);
+						done[(SV*)pkg] = graph_walker_slot((SV*)lpkg, true);
+						sv_bless( (*item).second.tsv, lpkg );
 					}
 					else {
 						sv_bless( (*item).second.tsv, (HV*) (*target).second.tsv );

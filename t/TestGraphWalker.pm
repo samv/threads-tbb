@@ -105,4 +105,12 @@ make_test sub { \$_[0] }, sub { ${$_[0]} }, "Test REF SCALAR";
 make_test sub { [ foo => 1.0*$_[0] ] }, sub { $_[0]->[1] }, "Test AV";
 make_test sub { +{ foo => 1.0*$_[0] } }, sub { $_[0]->{foo} }, "Test HV";
 
+sub FooHV::val {
+	my $self = shift;
+	$self->{foo};
+}
+make_test
+	sub { bless { foo => 1.0*$_[0] }, "FooHV" },
+	sub { $_[0]->val }, "Test Blessed HV";
+
 1;
