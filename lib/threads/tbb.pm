@@ -22,29 +22,9 @@ our $worker;  # set in XS code if we're a worker thread
 BEGIN {
 	# save what .pm files are already included - these need to be
 	# loaded in children.
+	@BOOT_LIB = @INC;
 	%BOOT_INC = %INC;
 
-	# also, figure out what -Mlib=... arguments we need to pass to
-	# child threads.
-	if ( !$worker ) {
-		# the allocated perls will respect these variables; we
-		# are just doing this to 
-		#local ( $ENV{PERL5LIB} ) = "";
-		#local ( $ENV{PERL5OPT} ) = "";
-		my @default_inc = `$^X -le 'print for \@INC'`;
-		chomp($_) for @default_inc;
-
-		for my $path (@INC) {
-			next if ref $path;
-			if ( !grep { $_ eq $path } @default_inc ) {
-				unshift @BOOT_LIB, $path;
-			}
-		}
-
-		# add a 'use' tracker to INC - keeps the order that
-		# modules are loaded in.
-		unshift @INC, \&track_use;
-	}
 }
 
 sub track_use {
