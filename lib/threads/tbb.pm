@@ -103,4 +103,13 @@ sub initialize {
 	$self->{init}->initialize;
 }
 
+sub parallel_for {
+	my $self = shift;
+	my $range = shift;
+	my $body = shift;
+	my $allocator = shift and croak 'no allocator allowed yet';
+	# ... perhaps this should just be the public API.
+	$body->parallel_for($range);
+}
+
 1;

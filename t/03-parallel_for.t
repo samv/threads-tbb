@@ -27,6 +27,6 @@ my $body = threads::tbb::for_int_func->new(
 );
 isa_ok($body, "threads::tbb::for_int_func", "new for_int_func");
 
-parallel_for($tbb->{init}, $range, $body);
+$tbb->parallel_for($range, $body);
 pass("didn't crash!");
 

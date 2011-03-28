@@ -22,8 +22,8 @@ while ( defined &{($test_func = "TestGraphWalker::Test".(++$test_num))} ) {
 	my ($range, $body, $run_tests) = $test_func->($tbb);
 	my @times = times();
 	my $now = [ gettimeofday ];
-	parallel_for ($tbb->{init}, $range, $body);
-	diag("parallel_for complete");
+	$tbb->parallel_for($range, $body);
+	diag("parallel_for complete") if -t STDOUT;
 	my $elapsed = tv_interval $now;
 	my $cputime = sum map { $_ - (shift @times) } times();
 	diag("cpu: $cputime; elapsed: $elapsed") if -t STDOUT;

@@ -4,7 +4,8 @@ package TestGraphWalker;
 use Data::Dumper;
 
 use Time::HiRes qw(sleep);
-#use Devel::Peek;
+use constant DEBUG => 0;
+require Devel::Peek if DEBUG;
 
 sub doTest {
 	my $body = shift;
@@ -13,20 +14,20 @@ sub doTest {
 	my $wrap = shift;
 	my $array = $body->get_array;
 
-	print STDERR "Processing [".$range->begin.",".$range->end."), worker = ".($threads::tbb::worker ? "YES" : "NO")."\n" if -t STDOUT;
+	print STDERR "Processing [".$range->begin.",".$range->end."), worker = ".($threads::tbb::worker ? "YES" : "NO")."\n" if DEBUG;
 	$|=1;
 	for my $idx ( $range->begin .. $range->end-1 ) {
 		my $fetch_item = $array->FETCH($idx);
-		#print STDERR "Fetched item $idx:\n";
-		#Dump($fetch_item);
+		print STDERR "Fetched item $idx:\n" if DEBUG;
+		Dump($fetch_item) if DEBUG;
 		my $num = $unwrap->($array->FETCH($idx));
 		my $store_item = $wrap->( $num/3 );
-		#print STDERR "Storing item $idx:\n";
-		#Dump($store_item);
+		print STDERR "Storing item $idx:\n" if DEBUG;
+		Dump($store_item) if DEBUG;
 		$array->STORE($idx, $store_item);
 	}
 	sleep rand(0.2);
-	print STDERR "Done processing [".$range->begin.",".$range->end."), worker = ".($threads::tbb::worker ? "YES" : "NO")."\n" if -t STDOUT;
+	print STDERR "Done processing [".$range->begin.",".$range->end."), worker = ".($threads::tbb::worker ? "YES" : "NO")."\n" if DEBUG;
 }
 
 our $test_num = 1;
@@ -56,9 +57,9 @@ sub TestN {
 	tie my @vector, "threads::tbb::concurrent::array";
 
 	push @vector, map {
-		#print STDERR "Storing item ".($_-1).":\n";
+		print STDERR "Storing item ".($_-1).":\n" if DEBUG;
 		my $item = $Wrap->($_);
-		#Dump $item;
+		Dump $item if DEBUG;
 		$item;
 	} 1..4;
 
@@ -75,8 +76,7 @@ sub TestN {
 			my @all;
 			my $pass = 1;
 			while ( ++$i <= $#vector ) {
-				main::diag("Fetching vector[$i]")
-						if -t STDOUT;
+				main::diag("Fetching vector[$i]") if DEBUG;
 				my $slot = $vector[$i];
 				my $expected_num = ($i+1)/3;
 				my $seen_num = $Unwrap->($slot);
@@ -104,6 +104,29 @@ make_test sub { \$_[0] }, sub { ${$_[0]} }, "Test REF SCALAR";
 
 make_test sub { [ foo => 1.0*$_[0] ] }, sub { $_[0]->[1] }, "Test AV";
 make_test sub { +{ foo => 1.0*$_[0] } }, sub { $_[0]->{foo} }, "Test HV";
+
+# sub FooSV::val {
+# 	my $self = shift;
+# 	$$self;
+# }
+# make_test
+# 	sub { bless \(1.0*$_[0]), "FooSV" },
+# 	sub { $_[0]->val }, "Test Blessed (ref)SV";
+# sub FooRV::val {
+# 	my $self = shift;
+# 	$$$self;
+# }
+# make_test
+# 	sub { bless { \\(1.0*$_[0]) }, "FooRV" },
+# 	sub { $_[0]->val }, "Test Blessed (ref)RV";
+
+# sub FooAV::val {
+# 	my $self = shift;
+# 	$self->[1];
+# }
+# make_test
+# 	sub { bless [ foo => 1.0*$_[0] ], "FooAV" },
+# 	sub { $_[0]->val }, "Test Blessed AV";
 
 sub FooHV::val {
 	my $self = shift;

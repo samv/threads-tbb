@@ -231,15 +231,14 @@ perl_for_int_func::new( context, funcname, array )
 perl_concurrent_vector*
 perl_for_int_func::get_array()
 
-MODULE = threads::tbb		PACKAGE = threads::tbb
-
 void
-parallel_for( init, range, body )
-	perl_tbb_init* init;
+parallel_for(self, range)
+	perl_for_int_func* self;
 	perl_tbb_blocked_int* range;
-	perl_for_int_func* body;
-
   CODE:
 	perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
-	perl_for_int_func body_copy = perl_for_int_func(*body);
+	perl_for_int_func body_copy = perl_for_int_func(*self);
 	parallel_for( range_copy, body_copy );
+
+MODULE = threads::tbb		PACKAGE = threads::tbb
+
