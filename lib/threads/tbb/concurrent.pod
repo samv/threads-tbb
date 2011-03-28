@@ -10,22 +10,20 @@ threads::tbb::concurrent:: - namespace for concurrent TBB containers
  $array[0] = $val;
  push @array, @items;
 
+ # TODO:
  tie my @queue, "threads::tbb::concurrent::queue";
  push @queue, $val;
  my $val = shift @queue;
 
+ # TODO:
  tie my %hash, "threads::tbb::concurrent::hash";
-
  my $slot = \$hash{key};
  say "it exists" if $slot->exists;  # extension
-
  # fetch / store
  print "it is set to : ".$$slot;
  $$slot = "value";
-
  # erasing a key
  $slot->delete;  # extension
-
  # concurrent iteration - not safe for update
  my ($key, $value) = each %hash;
 
@@ -35,9 +33,10 @@ threads::tbb::concurrent:: - namespace for concurrent TBB containers
 
 =head1 DESCRIPTION
 
-The C<threads::tbb::concurrent::> series of modules wrap respective
-tbb concurrent classes.  Or, at least they will once they are written.
-For now only L<threads::tbb::concurrent::array> exists.
+The C<threads::tbb::concurrent::> series of modules wrap
+respective tbb concurrent classes.  Or, at least they will
+once they are written.  For now only the array interface
+exists; see L<threads::tbb::concurrent::array>.
 
 Note that they are only concurrent if you restrict yourself to the
 concurrent APIs.  Other ways of accessing the containers may result in
@@ -45,49 +44,105 @@ programs with race conditions.
 
 =head2 Lazy deep copying
 
-This is currently just a theory, but it might be possible for these
-concurrent structures to record the C<PerlInterpreter*> that wrote to
-them, and just save the pointer.  Then, if they are requested by a
-different thread, a deep copy happens then and there, carried out by
-the worker thread and not the main thread.  So long as there is no use
-of the actual state machine of the foreign interpreter, or side
-effects on data structures it "owns", it should be relatively safe.
-Of course if the interpreter that sent the data violates expectations
-by modifying the data structures, all bets are off.
+  This feature is still in evolution.  It is eventually
+  meant to be used to selectively clone a subroutine and
+  data reachable from that subroutine in a separate
+  interpreter and run the cloned subroutine in a separate
+  thread.  Since there is no shared data between the
+  interpreters, little or no locking will be needed (unless
+  parts of the symbol table are explicitly shared).  This is
+  obviously intended to be an easy-to-use replacement for
+  the existing threads support.
 
-The initial implementation of the deep copying has very much the same
-limitations as threads::shared - in that only "pure" perl objects can
-be passed through.  "pure" in this sense does include various XS
-types.  But not, for instance, inside-out objects, MAD properties,
-tied objects or other forms of magic.  Filehandles I do intend to
-support, but they are not implemented yet.
+      -- from change#4675: "USE_ITHREADS tweaks and notes"
+         Gurusamy Sarathy, 9 Dec 1999
 
-If it does turn out to be stable, then it would help reduce the
-overhead that a threading program has to overcome to break even; eg,
-if the single-threaded case is more than 100% slower, then you need
-more than 2 cores just to break "even"; and that's before you take
-into consideration that the program may not scale beyond a given
-number of cores.  This would mean that this overhead is delegated to
-the worker threads; they might not be able to carry out work at full
-speed compared to the main thread, but at least they're not impeding
-it by making it waste time dumping data that it might have to simply
-load again itself to process.
+The C++ function C<clone_other_sv>, from F<graphwalker.cc>,
+exists to implement selecting cloning of data reachable from
+one interpreter to the next.  This is implemented in a lazy fashion.
 
-Another interesting experiment at this point would be to try building
-under -Duse5005threads, and seeing if things are relatively stable.
-It's possible that the branch is too far buried to be servicable, but
-a useful data point nonetheless.
+If entries in the container are requested by a different
+thread, a deep copy happens then and there, carried out by
+the worker thread and not the main thread.  So long as there
+is no use of the actual state machine of the foreign
+interpreter, or side effects on data structures it "owns",
+this should be relatively safe.
 
-If foreign-structure dumping turns out not to be stable then there are
-two main approaches.  Either dump everything and just document that
-the size of data put in and out may be a limiting factor for many
-users, or potentially queue requests for the originating thread to
-process the dump, then yield or even spin.
+The advantage to this, over an eager algorithm which used a
+safe, neutral interpreter that never runs anything (as in
+L<threads::shared>), or to a collection of
+C<Storable::freeze> blobs (as in L<threads::lite>) being:
+1. reduced memory use; data is only copied to the threads
+which demand it, 2. there is no overhead for the thread that
+started the operation to process data; other than that taken
+receiving completed blocks from workers, 3. reduced number
+of overall deep copies, 4. faster cloning (C<clone_other_sv>
+is implemented in C++ using STL containers).  5. You can
+choose to use an eager algorithm by simply C<freeze>'ing
+data on the way in.
 
-Queuing requests for other threads to safely marshall the data in and
-out could prove problematic and lead to deadlocks, so probably the
-best approach is to support both lazy and immediate deep copies by an
-option set on the container.
+Of course if the interpreter that sent the data violates
+expectations by modifying the data structures, all bets are
+off.  TODO: setting TTBB_EAGER=1 to copy to neutral shared
+interpreter for a single program run.
+
+=head2 Allowed data types
+
+The initial implementation of the deep copying has very much
+the same limitations as L<threads::shared> - in that only a
+certain core set of "pure" perl objects can be passed
+through.
+
+Passing through blessed pointers / XS objects should be
+considered dangerous; you'll usually be looking at the same
+C struct in both threads.  You should consider whether or
+not this is a good idea for you.
+
+As closures are not supported, inside-out objects cannot be
+passed - and in fact they'd likely be very inefficient.
+
+Not yet supported are MAD properties, tied objects or other
+forms of magic.  Overload is currently thought to be safe.
+Filehandles I do intend to support, but they are not
+implemented yet.  Closures are on the near TODO list.
+
+=head1 On memory copying stability
+
+If it does turn out to be stable, then it would help reduce
+the overhead that a threading program has to overcome to
+break even; eg, if the single-threaded case is more than
+100% slower, then you need more than 2 cores just to break
+"even"; and that's before you take into consideration that
+the program may not scale beyond a given number of cores.
+This would mean that this overhead is delegated to the
+worker threads; they might not be able to carry out work at
+full speed compared to the main thread, but at least they're
+not impeding it by making it waste time dumping data that it
+might have to simply load again itself to process.
+
+Of course, in principle, building under -Duse5005threads
+(removed in Perl 5.9.x) would obliviate the need to copy
+anything at all.
+
+If foreign-structure dumping turns out not to be stable then
+there are two main approaches.  Either dump everything and
+just document that the size of data put in and out may be a
+limiting factor for many users, or potentially queue
+requests for the originating thread to process the dump,
+then yield or even spin.
+
+Queuing requests for other threads to safely marshall the
+data in and out could prove problematic and lead to
+deadlocks, so probably the best approach is to support both
+lazy and immediate deep copies by an option set on the
+container.
+
+=head1 AUTHOR
+
+Sam Vilain, C<sam.vilain@openparallel.com>
+
+=head1 SEE ALSO
+
+L<threads::tbb>, L<threads::tbb::concurrent::array>
 
 =cut
-
