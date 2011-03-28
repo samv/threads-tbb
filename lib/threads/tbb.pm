@@ -10,8 +10,6 @@ our $VERSION = '0.01';
 require XSLoader;
 XSLoader::load('threads::tbb', $VERSION);
 
-use base qw(Exporter);
-
 # this contains paths given to child perls as -Mlib=xxx
 our @BOOT_LIB;
 
@@ -22,8 +20,6 @@ our @BOOT_USE;
 our $worker;  # set in XS code if we're a worker thread
 
 BEGIN {
-	our @EXPORT = qw(parallel_for);
-
 	# save what .pm files are already included - these need to be
 	# loaded in children.
 	%BOOT_INC = %INC;
