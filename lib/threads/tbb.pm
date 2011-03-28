@@ -112,4 +112,19 @@ sub parallel_for {
 	$body->parallel_for($range);
 }
 
+BEGIN {
+	no strict 'refs';
+	for my $body ( qw( for_int_array_func ) ) {
+		my $class = "threads::tbb::$body";
+		*$body = sub {
+			my $tbb = shift;
+                        my $bfunc = eval { $class->new( $tbb->{init}, @_ ) };
+			if ( !$bfunc ) {
+				carp $@;
+			}
+			return $bfunc;
+		};
+	}
+}
+
 1;

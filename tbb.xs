@@ -220,24 +220,24 @@ TIEARRAY(classname)
         ST(0) = sv_newmortal();
         sv_setref_pv( ST(0), classname, (void*)RETVAL );
 	
-MODULE = threads::tbb::for_int_func	PACKAGE = threads::tbb::for_int_func
+MODULE = threads::tbb::for_int_array_func	PACKAGE = threads::tbb::for_int_array_func
 
-perl_for_int_func*
-perl_for_int_func::new( context, funcname, array )
+perl_for_int_array_func*
+perl_for_int_array_func::new( context, array, funcname )
 	perl_tbb_init* context;
-	std::string funcname;
 	perl_concurrent_vector* array;
+	std::string funcname;
 
 perl_concurrent_vector*
-perl_for_int_func::get_array()
+perl_for_int_array_func::get_array()
 
 void
 parallel_for(self, range)
-	perl_for_int_func* self;
+	perl_for_int_array_func* self;
 	perl_tbb_blocked_int* range;
   CODE:
 	perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
-	perl_for_int_func body_copy = perl_for_int_func(*self);
+	perl_for_int_array_func body_copy = perl_for_int_array_func(*self);
 	parallel_for( range_copy, body_copy );
 
 MODULE = threads::tbb		PACKAGE = threads::tbb

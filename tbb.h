@@ -109,16 +109,16 @@ private:
 
 // these are the types passed to parallel_for et al
 
-// threads::tbb::for_int_func
+// threads::tbb::for_int_array_func
 // first a very simple one that allows an entry-point function to be called by
 // name, with a sub-dividing integer range.
 
-class perl_for_int_func {
+class perl_for_int_array_func {
 	const std::string funcname;
 	perl_tbb_init* context;
 	perl_concurrent_vector* xarray;
 public:
-	perl_for_int_func( perl_tbb_init* context, std::string funcname, perl_concurrent_vector* xarray ) :
+        perl_for_int_array_func( perl_tbb_init* context, perl_concurrent_vector* xarray, std::string funcname ) :
 	funcname(funcname), context(context), xarray(xarray) { };
 	perl_concurrent_vector* get_array() { return xarray; };
 	void operator()( const perl_tbb_blocked_int& r ) const;  // doh

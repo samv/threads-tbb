@@ -64,8 +64,8 @@ sub TestN {
 	} 1..4;
 
 	my $range = threads::tbb::blocked_int->new(0, $#vector+1, 1);
-	my $body = threads::tbb::for_int_func->new(
-		$tbb->{init}, __PACKAGE__."::Test${n}Func", tied(@vector),
+	my $body = $tbb->for_int_array_func(
+		tied(@vector), __PACKAGE__."::Test${n}Func",
 	);
 
 	return (

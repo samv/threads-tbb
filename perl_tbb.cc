@@ -152,7 +152,7 @@ static bool aTHX;
 
 // a parallel_for body class that works with blocked_int range type
 // only.
-void perl_for_int_func::operator()( const perl_tbb_blocked_int& r ) const {
+void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const {
 	perl_interpreter_pool::accessor interp;
 	bool ah_true = true;
 	raw_thread_id thread_id = get_raw_thread_id();
@@ -160,7 +160,7 @@ void perl_for_int_func::operator()( const perl_tbb_blocked_int& r ) const {
 	IF_DEBUG(_warn("thr %x: processing range [%d,%d)\n", thread_id, r.begin(), r.end() ));
 
 	SV *isv, *inv, *range;
-	perl_for_int_func body_copy = *this;
+	perl_for_int_array_func body_copy = *this;
 	perl_tbb_blocked_int r_copy = r;
 
 	// this declares and loads 'my_perl' variables from TLS
@@ -181,7 +181,7 @@ void perl_for_int_func::operator()( const perl_tbb_blocked_int& r ) const {
 	IF_DEBUG_PERLCALL( "thr %x: (PUSHMARK ok)\n", thread_id );
 
 	isv = newSV(0);
-	inv = sv_2mortal( sv_setref_pv(isv, "threads::tbb::for_int_func", &body_copy ));
+	inv = sv_2mortal( sv_setref_pv(isv, "threads::tbb::for_int_array_func", &body_copy ));
 	SvREFCNT_inc(inv);
 	XPUSHs(inv);
 	IF_DEBUG_PERLCALL( "thr %x: (map_int_body ok)\n", thread_id );

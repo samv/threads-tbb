@@ -22,10 +22,9 @@ my $tbb = threads::tbb->new(
 my $range = threads::tbb::blocked_int->new(0, scalar(@array), 2);
 is($range->end, 10, "Made a blocked range");
 
-my $body = threads::tbb::for_int_func->new(
-	$tbb->{init}, "StaticFunc::myhandler", tied(@array),
-);
-isa_ok($body, "threads::tbb::for_int_func", "new for_int_func");
+my $body = $tbb->for_int_array_func( tied(@array), "StaticFunc::myhandler" );
+
+isa_ok($body, "threads::tbb::for_int_array_func", "new for_int_array_func");
 
 $tbb->parallel_for($range, $body);
 pass("didn't crash!");
