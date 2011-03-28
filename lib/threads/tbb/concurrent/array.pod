@@ -10,12 +10,26 @@ threads::tbb::concurrent::array - shared array variable via tbb::concurrent_vect
   #my @array :concurrent;  # TODO
   tie my @array, "threads::tbb::concurrent::array";
 
+  push @array, @items;   # safe
+  my $item = $array[0];  # safe
+  $array[0] = $item;     # safe
+
+  # THREAD-UNSAFE but implemented:
+  print $#array;
+  $#array = 7;
+
+  # never:
+  $array[0]->mutate;
+
 =head1 DESCRIPTION
 
 The concurrent vector is an array that multiple threads can read to
 and write from.  It also provides the advantage of using cache-aligned
 array slots, so threads don't conflict on nearby access with each
 other.
+
+Implementation of basic array primitives is incomplete; stick with the
+concurrent API and you will be fine.  Patches welcome!
 
 The thread-safe operations on this type are:
 
@@ -32,11 +46,7 @@ Tied access to pushing to the end of the array.  Adding an item or
 list of items to the end of the list.  There is no concurrent POP or
 SHIFT; see L<threads::tbb::concurrent::fifo> for that.
 
-=item 
-
 =back
-
-
 
 =head2 THREAD UNSAFE OPERATIONS
 
@@ -52,7 +62,8 @@ Get the length of the array.
 
 =item STORESIZE
 
-Supported, calls grow_to_at_least and the grow_by.
+Supported, calls grow_to_at_least and the grow_by.  Does not permit
+shrinking the array.
 
 =item EXTEND
 
@@ -65,9 +76,20 @@ the grow_by.
 
 =over
 
+=item CLEAR
 
+Not implemented; so currently C<@array = @foo> doesn't work
+
+=item Array with contents
+
+Currently the TIEARRAY method doesn't respect tieing to an array with
+existing contents.
 
 =back
+
+=head1 SEE ALSO
+
+L<threads::tbb::concurrent>, L<threads::tbb>
 
 =cut
 
