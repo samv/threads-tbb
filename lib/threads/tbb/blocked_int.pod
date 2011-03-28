@@ -18,7 +18,7 @@ threads::tbb::blocked_int - a divisible range of integers
 
 =head1 DESCRIPTION
 
-This class lets you construct a C<tbb::blocked_rangeE<gt>intE<lt>>
+This class lets you construct a C<tbb::blocked_rangeE<lt>intE<gt>>
 range.  This is used for passing to functions such as
 L<threads::tbb/parallel_for> to specify the iteration / division
 space.

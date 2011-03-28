@@ -31,9 +31,12 @@ other.
 Implementation of basic array primitives is incomplete; stick with the
 concurrent API and you will be fine.  Patches welcome!
 
-The thread-safe operations on this type are:
+The thread-safe operations on this type are (see L<perltie> for
+specifics on the API of these methods):
 
 These are:
+
+=over
 
 =item FETCH & STORE
 
@@ -44,7 +47,7 @@ a L<threads::tbb::blocked_int>, this is safe.
 
 Tied access to pushing to the end of the array.  Adding an item or
 list of items to the end of the list.  There is no concurrent POP or
-SHIFT; see L<threads::tbb::concurrent::fifo> for that.
+SHIFT; see L<threads::tbb::concurrent::queue#TODO> for that.
 
 =back
 
@@ -64,11 +67,6 @@ Get the length of the array.
 
 Supported, calls grow_to_at_least and the grow_by.  Does not permit
 shrinking the array.
-
-=item EXTEND
-
-(TODO) could be implemented using grow_by and then calls to PUSH use
-the grow_by.
 
 =back
 

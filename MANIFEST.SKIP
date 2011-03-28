@@ -1,0 +1,15 @@
+META.yml
+^Makefile$
+\.bak$
+\.old$
+^blib(/.*)?$
+^inc$
+pm_to_blib
+\.tar(\.gz)?$
+MANIFEST(.SKIP)?$
+SIGNATURE$
+^\.git(/.*)?$
+~$
+^\.?#
+\.(aux|dvi|idx|log|pdf|ps|tex|toc|o|c|bs|bak|old)$
+^\.(gitignore|gdbinit)

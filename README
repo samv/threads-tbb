@@ -14,6 +14,9 @@ To install this module type the following:
    make test
    make install
 
+See the installed perldoc for L<threads::tbb> for information on how
+to use the library.
+
 DEPENDENCIES
 
 This module requires the TBB library be installed and system headers
