@@ -112,20 +112,8 @@ perl_concurrent_vector::FETCH(i)
 	slot = &(*THIS)[i];
 	mysv = slot->thingy;
 	if (mysv) {
-		if (slot->owner == my_perl) {
-			RETVAL = newSV(0);
-			SvSetSV_nosteal(RETVAL, mysv);
-			//sv_2mortal(RETVAL);
-			IF_DEBUG_VECTOR("FETCH(%d): returning %x: copied to %x (refcnt = %d)", i, mysv, RETVAL, SvREFCNT(RETVAL));
-		}
-		else {
-			IF_DEBUG_CLONE("ABOUT TO CLONE SV: %x (refcnt = %d)", mysv, SvREFCNT(mysv));
-			SV* rsv = clone_other_sv( my_perl, mysv, slot->owner );
-			//sv_2mortal(rsv);
-			SvREFCNT_inc(rsv);
-			IF_DEBUG_VECTOR("FETCH(%d): returning clone = %x (refcnt = %d)", i, rsv, SvREFCNT(rsv));
-			RETVAL = rsv;
-		}
+		RETVAL = slot->dup( my_perl );
+		IF_DEBUG_VECTOR("FETCH(%d): returning %x: copied to %x (refcnt = %d)", i, mysv, RETVAL, SvREFCNT(RETVAL));
 	}
 	else {
 		IF_DEBUG_VECTOR("FETCH(%d): returning undef", i);

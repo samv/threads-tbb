@@ -81,6 +81,7 @@ public:
 	perl_concurrent_slot( ) {};
 	perl_concurrent_slot( PerlInterpreter* owner, SV* thingy )
 		: thingy(thingy), owner(owner) {};
+	SV* dup( pTHX );
 };
 
 // threads::tbb::init
