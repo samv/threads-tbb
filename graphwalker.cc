@@ -116,6 +116,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 			const char* str;
 			STRLEN len;
 			SV* nv;
+			SV* magic_sv;
 			IF_DEBUG_CLONE("   SV is not ROK but type %d", SvTYPE(it));
 			switch (SvTYPE(it)) {
 			case SVt_PVAV:
@@ -249,6 +250,10 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				STRLEN len;
 				str = SvPV(it, len);
 				done[it] = graph_walker_slot(sv_2mortal(newSVpv( str, len )), true);
+				break;
+			case SVt_PVMG:
+				IF_DEBUG_CLONE("     => PVMG (%x)", SvIV(it));
+				done[it] = graph_walker_slot(sv_2mortal(newSViv(SvIV(it))), true);
 				break;
 			default:
 				croak("unknown SV type %d SVt_PVIV = %d; cannot marshall through concurrent container",
