@@ -23,7 +23,7 @@ typedef tbb::spin_mutex      mutex_t;
 // set to "IF_DEBUG(e) e" to allow debugging messages,
 #define IF_DEBUG(e)
 
-#define IF_DEBUG_THR(msg, e...) IF_DEBUG(_warn("thr %x: " msg, get_raw_thread_id(), ##e))
+#define IF_DEBUG_THR(msg, e...) IF_DEBUG(_warn("thr %x: " msg "\n", get_raw_thread_id(), ##e))
 
 // then uncomment these to to enable a type of debug message
 //#define DEBUG_PERLCALL
