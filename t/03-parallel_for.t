@@ -16,16 +16,17 @@ is(@array, 10, "put 10 strings in it");
 
 my $tbb = threads::tbb->new(
 	threads => 4,
-	modules => [ "StaticFunc" ],
+	modules => [ "StaticCB" ],
 );
 
 my $range = threads::tbb::blocked_int->new(0, scalar(@array), 2);
 is($range->end, 10, "Made a blocked range");
 
-my $body = $tbb->for_int_array_func( tied(@array), "StaticFunc::myhandler" );
+my $body = $tbb->for_int_array_func( tied(@array), "StaticCB::myhandler" );
 
 isa_ok($body, "threads::tbb::for_int_array_func", "new for_int_array_func");
 
-$tbb->parallel_for($range, $body);
+$body->parallel_for($range);
+
 pass("didn't crash!");
 

@@ -1,5 +1,5 @@
 
-package StaticFunc;
+package StaticCB;
 
 use Data::Dumper;
 use Time::HiRes qw(sleep);
