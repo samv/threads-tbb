@@ -44,7 +44,7 @@ sub new {
 	if ( @_ == 1 ) {
 		$options{threads} = shift;
 	}
-	elsif ( @_ % 1 ) {
+	elsif ( @_ % 2 ) {
 		croak "odd number of arguments passed";
 	}
 	else {
