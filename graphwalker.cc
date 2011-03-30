@@ -172,9 +172,9 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				// side-effect free hash iteration :)
 				num = HvMAX(it);
 				contents = HvARRAY(it);
-				IF_DEBUG_CLONE("   walking over %d slots at contents @%x", num, contents);
+				IF_DEBUG_CLONE("   walking over %d slots at contents @%x", num+1, contents);
 				IF_DEBUG_CLONE("   (PL_sv_placeholder = %x)", &PL_sv_placeholder);
-				for (int i = 0; i < num; i++ ) {
+				for (int i = 0; i <= num; i++ ) {
 					IF_DEBUG_CLONE("   contents[%d] = %x", i, contents[i]);
 					if (!contents[i])
 						continue;
@@ -197,7 +197,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				if (all_found) {
 					IF_DEBUG_CLONE("   no unseen slot values");
 					HV* hv = (HV*)done[it].tsv;
-					for (int i = 0; i < num; i++ ) {
+					for (int i = 0; i <= num; i++ ) {
 						HE* hent = contents[i];
 						if (!hent) {
 							continue;
