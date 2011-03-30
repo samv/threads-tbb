@@ -29,16 +29,18 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 	PerlInterpreter* my_perl;
 	bool fresh = false;
 	if (!tbb_interpreter_pool.find( lock, thread_id )) {
-#ifdef DEBUG_PERLCALL
-		IF_DEBUG(fprintf(stderr, "thr %x: first post!\n", thread_id));
-#endif
 		tbb_interpreter_pool.insert( lock, thread_id );
-		lock->second = true;
+
+		{
+			// grab a number!
+			mutex_t::scoped_lock x(perl_tbb_worker_mutex);
+			lock->second = ++perl_tbb_worker;
+		}
 
 		// start an interpreter!  fixme: load some code :)
 		my_perl = perl_alloc();
 #ifdef DEBUG_PERLCALL
-		IF_DEBUG(fprintf(stderr, "thr %x: allocated an interpreter\n", thread_id));
+		IF_DEBUG(fprintf(stderr, "thr %x: allocated an interpreter for worker %d\n", thread_id, lock->second));
 #endif
 		// probably unnecessary
 		PERL_SET_CONTEXT(my_perl);
@@ -51,7 +53,7 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 		// signal to the threads::tbb module that it's a child
 		SV* worker_sv = get_sv("threads::tbb::worker", GV_ADD|GV_ADDMULTI);
 		//SvUPGRADE(worker_sv, SVt_IV);
-		sv_setiv(worker_sv, 1);
+		sv_setiv(worker_sv, lock->second);
 
 		// setup the @INC
 		init->setup_worker_inc(aTHX);
@@ -80,23 +82,22 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 
 void perl_tbb_init::mark_master_thread_ok() {
 	perl_interpreter_pool::accessor lock;
-	raw_thread_id thread_id = get_raw_thread_id();
-	IF_DEBUG_INIT( "thr %x: am master thread\n", thread_id);
-	tbb_interpreter_pool.insert( lock, thread_id );
-	lock->second = true;
+	IF_DEBUG_INIT( "I am the master thread");
+	tbb_interpreter_pool.insert( lock, get_raw_thread_id() );
+	lock->second = 0;
 }
 
 void perl_tbb_init::setup_worker_inc( pTHX ) {
 	// first, set up the boot_lib
 	list<string>::const_reverse_iterator lrit;
 	
-	// grab @INC and %INC
+	// grab @INC
 	AV* INC_a = get_av("INC", GV_ADD|GV_ADDWARN);
 
 	// add all the lib paths to our INC
 	for ( lrit = boot_lib.rbegin(); lrit != boot_lib.rend(); lrit++ ) {
 		bool found = false;
-		IF_DEBUG(fprintf(stderr, "thr %x: checking @INC for %s\n", get_raw_thread_id(),lrit->c_str() ));
+		//IF_DEBUG(fprintf(stderr, "thr %x: checking @INC for %s\n", get_raw_thread_id(),lrit->c_str() ));
 		for ( int i = 0; i <= av_len(INC_a); i++ ) {
 			SV** slot = av_fetch(INC_a, i, 0);
 			if (!slot || !SvPOK(*slot))

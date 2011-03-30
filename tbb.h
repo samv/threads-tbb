@@ -180,7 +180,11 @@ struct raw_thread_hash_compare {
 	}
 };
 
-class perl_interpreter_pool : public tbb::concurrent_hash_map<raw_thread_id, bool, raw_thread_hash_compare> {
+// threads::tbb::init
+static int perl_tbb_worker = 0;
+static mutex_t perl_tbb_worker_mutex;
+
+class perl_interpreter_pool : public tbb::concurrent_hash_map<raw_thread_id, int, raw_thread_hash_compare> {
 public:
 	void grab( perl_interpreter_pool::accessor& result, perl_tbb_init*init);
 };
