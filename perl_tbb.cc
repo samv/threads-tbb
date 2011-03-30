@@ -61,6 +61,13 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 		ENTER;
 		load_module(PERL_LOADMOD_NOIMPORT, newSVpv("threads::tbb", 0), NULL, NULL);
 		LEAVE;
+		IF_DEBUG_INIT("loaded threads::tbb");
+#if IF_DEBUG(1)+0
+		ENTER;
+		load_module(PERL_LOADMOD_NOIMPORT, newSVpv("Devel::Peek", 0), NULL, NULL);
+		IF_DEBUG_INIT("loaded Devel::Peek");
+		LEAVE;
+#endif
 		fresh = true;
 	}
 	else {
@@ -109,7 +116,7 @@ void perl_tbb_init::setup_worker_inc( pTHX ) {
 			break;
 		}
 		if (found) {
-			IF_DEBUG(fprintf(stderr, "thr %x: %s in @INC already\n", get_raw_thread_id(),lrit->c_str() ));
+			//IF_DEBUG(fprintf(stderr, "thr %x: %s in @INC already\n", get_raw_thread_id(),lrit->c_str() ));
 		}
 		else {
 			av_unshift( INC_a, 1 );
@@ -122,6 +129,7 @@ void perl_tbb_init::setup_worker_inc( pTHX ) {
 }
 
 void perl_tbb_init::load_modules( pTHX ) {
+	// get %INC
 	HV* INC_h = get_hv("INC", GV_ADD|GV_ADDWARN);
 
 	std::list<std::string>::const_iterator mod;
@@ -155,10 +163,8 @@ static bool aTHX;
 // only.
 void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const {
 	perl_interpreter_pool::accessor interp;
-	bool ah_true = true;
 	raw_thread_id thread_id = get_raw_thread_id();
 	tbb_interpreter_pool.grab( interp, this->context );
-	IF_DEBUG(_warn("thr %x: processing range [%d,%d)\n", thread_id, r.begin(), r.end() ));
 
 	SV *isv, *inv, *range;
 	perl_for_int_array_func body_copy = *this;
@@ -166,42 +172,34 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 
 	// this declares and loads 'my_perl' variables from TLS
 	dTHX;
-	IF_DEBUG_PERLCALL( "thr %x: my_perl = %x\n", thread_id, my_perl );
 
 	// declare and copy the stack pointer from global
 	dSP;
-	IF_DEBUG_PERLCALL( "thr %x: (dSP ok)\n", thread_id );
 
 	// if we are to be creating temporary values, we need these:
 	ENTER;
 	SAVETMPS;
-	IF_DEBUG_PERLCALL( "thr %x: (ENTER/SAVETMPS ok)\n", thread_id );
 
 	//   // take a mental note of the current stack pointer
 	PUSHMARK(SP);
-	IF_DEBUG_PERLCALL( "thr %x: (PUSHMARK ok)\n", thread_id );
 
 	isv = newSV(0);
 	inv = sv_2mortal( sv_setref_pv(isv, "threads::tbb::for_int_array_func", &body_copy ));
 	SvREFCNT_inc(inv);
 	XPUSHs(inv);
-	IF_DEBUG_PERLCALL( "thr %x: (map_int_body ok)\n", thread_id );
 
 	isv = newSV(0);
 	range = sv_2mortal( sv_setref_pv(isv, "threads::tbb::blocked_int", &r_copy ));
 	SvREFCNT_inc(range);
 	XPUSHs(range);
-	IF_DEBUG_PERLCALL( "thr %x: (blocked_int ok)\n", thread_id );
 
 	//   // set the global stack pointer to the same as our local copy
 	PUTBACK;
-	IF_DEBUG_PERLCALL( "thr %x: (PUTBACK ok)\n", thread_id );
 
-	IF_DEBUG(_warn("thr %x: calling %s\n", thread_id, this->funcname.c_str() ));
+	IF_DEBUG_THR("calling %s", this->funcname.c_str() );
 	call_pv(this->funcname.c_str(), G_VOID|G_EVAL);
 	//   // in case stack was re-allocated
 	SPAGAIN;
-	IF_DEBUG_PERLCALL( "thr %x: (SPAGAIN ok)\n", thread_id );
 
 	//   // remember to PUTBACK; if we remove values from the stack
 
@@ -211,15 +209,15 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 		POPs;
 		PUTBACK;
 	}
-	IF_DEBUG_PERLCALL( "thr %x: ($@ ok)\n", thread_id );
+	IF_DEBUG_PERLCALL( "($@ ok)" );
 
 	//   // free up those temps & PV return value
 	FREETMPS;
-	IF_DEBUG_PERLCALL( "thr %x: (FREETMPS ok)\n", thread_id );
+	IF_DEBUG_PERLCALL( "(FREETMPS ok)" );
 	LEAVE;
-	IF_DEBUG_PERLCALL( "thr %x: (LEAVE ok)\n", thread_id );
+	IF_DEBUG_PERLCALL( "(LEAVE ok)" );
 
-	IF_DEBUG_PERLCALL( "thr %x: done processing range [%d,%d)\n",
-			   thread_id, r.begin(), r.end() );
+	IF_DEBUG_PERLCALL( "done processing range [%d,%d)",
+			   r.begin(), r.end() );
 };
 
