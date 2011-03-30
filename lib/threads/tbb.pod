@@ -216,7 +216,8 @@ C<parallel_for> can be used to process a set of data.  It is passed a
 B<range> object, and a B<body> object.  The B<body> object
 encapsulates state, and the range selects a part of that state.
 
-You can declare the B<body> object using the following method:
+You can declare the B<body> object using either of the following
+methods:
 
 =over
 
@@ -231,6 +232,18 @@ C<Some::Func> subroutine will be called as:
 
 If it wants to communicate state, it should do so via the
 C<$array_ref>.
+
+=item C<$tbb-E<gt>for_int_method( $object, "method" )>
+
+This will create a body object which calls the "method" method of
+C<$object> on sub-divided ranges; C<$object> will be cloned once for
+each worker, as:
+
+  $object->method( $range );
+
+You should refrain from modifying anything accessible from C<$self>
+within "method" without going through a L<threads::tbb::concurrent>
+container of some sort.
 
 =back
 

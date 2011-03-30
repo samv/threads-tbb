@@ -114,7 +114,7 @@ sub parallel_for {
 
 BEGIN {
 	no strict 'refs';
-	for my $body ( qw( for_int_array_func ) ) {
+	for my $body ( qw( for_int_array_func for_int_method ) ) {
 		my $class = "threads::tbb::$body";
 		*$body = sub {
 			my $tbb = shift;

@@ -31,6 +31,9 @@ typedef tbb::spin_mutex      mutex_t;
 //#define DEBUG_INIT
 //#define DEBUG_CLONE
 
+// this one is likely to break everything
+//#define DEBUG_PERLCALL_PEEK
+
 #ifdef DEBUG_PERLCALL
 #define IF_DEBUG_PERLCALL(msg, e...) IF_DEBUG_THR(msg, ##e)
 #else
@@ -122,7 +125,23 @@ public:
         perl_for_int_array_func( perl_tbb_init* context, perl_concurrent_vector* xarray, std::string funcname ) :
 	funcname(funcname), context(context), xarray(xarray) { };
 	perl_concurrent_vector* get_array() { return xarray; };
-	void operator()( const perl_tbb_blocked_int& r ) const;  // doh
+	void operator()( const perl_tbb_blocked_int& r ) const;
+};
+
+// threads::tbb::for_int_method
+// this one allows a SV to be passed
+class perl_for_int_method {
+	perl_tbb_init* context;
+	perl_concurrent_slot invocant;
+        perl_concurrent_vector* copied;
+public:
+	std::string methodname;
+perl_for_int_method( pTHX_ perl_tbb_init* context, SV* inv_sv, std::string methodname ) :
+	context(context), invocant( my_perl, newSVsv(inv_sv) ), methodname(methodname) {
+		copied = new perl_concurrent_vector();
+	};
+	SV* get_invocant( pTHX_ int worker );
+	void operator()( const perl_tbb_blocked_int& r ) const;
 };
 
 /*

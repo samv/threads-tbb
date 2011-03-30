@@ -221,11 +221,33 @@ perl_for_int_array_func::get_array()
 
 void
 parallel_for(self, range)
-	perl_for_int_array_func* self;
+        perl_for_int_array_func* self;
+        perl_tbb_blocked_int* range;
+  CODE:
+        perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
+        perl_for_int_array_func body_copy = perl_for_int_array_func(*self);
+        parallel_for( range_copy, body_copy );
+
+MODULE = threads::tbb::for_int_method	PACKAGE = threads::tbb::for_int_method
+
+perl_for_int_method*
+new( CLASS, context, inv_sv, methodname )
+	char* CLASS;
+	perl_tbb_init* context;
+	SV* inv_sv;
+	std::string methodname;
+  CODE:
+	RETVAL = new perl_for_int_method( my_perl, context, inv_sv, methodname );
+  OUTPUT:
+	RETVAL
+
+void
+parallel_for(self, range)
+	perl_for_int_method* self;
 	perl_tbb_blocked_int* range;
   CODE:
 	perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
-	perl_for_int_array_func body_copy = perl_for_int_array_func(*self);
+	perl_for_int_method body_copy = perl_for_int_method(*self);
 	parallel_for( range_copy, body_copy );
 
 MODULE = threads::tbb		PACKAGE = threads::tbb
