@@ -93,7 +93,6 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				// and here we bless things
 				if (SvOBJECT(SvRV(it))) {
 					HV* pkg = SvSTASH(SvRV(it));
-					IF_DEBUG_CLONE("    blessed be!");
 					target = done.find((SV*)pkg);
 					if (target == done.end()) {
 						const char * pkgname = HvNAME_get(pkg);
@@ -104,6 +103,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 					else {
 						sv_bless( (*item).second.tsv, (HV*) (*target).second.tsv );
 					}
+					IF_DEBUG_CLONE("    blessed be! => %s", HvNAME_get(pkg));
 				}
 				done[it].built = true;
 			}
@@ -254,7 +254,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				croak("unknown SV type %d SVt_PVIV = %d; cannot marshall through concurrent container",
 				      SvTYPE(it), SVt_PVNV);
 			}
-			IF_DEBUG_CLONE("    => %x / t=%d / rc=%d", done[it].tsv, SvTYPE(done[it].tsv), SvREFCNT(done[it].tsv));
+			IF_DEBUG_CLONE("cloned %x => %x / t=%d / rc=%d", it, done[it].tsv, SvTYPE(done[it].tsv), SvREFCNT(done[it].tsv));
 		}
 	}
 
