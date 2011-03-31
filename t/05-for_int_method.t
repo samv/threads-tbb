@@ -19,6 +19,10 @@ my $range = threads::tbb::blocked_int->new(0, 10, 3);
 is($range->end, 10, "Made a blocked range");
 
 my $object = Datum->new( x => 17 );
+if ( Datum::DEBUG ) {
+	diag("object is: $object");
+	Dump($object);
+}
 my $body = $tbb->for_int_method( $object, "callback" );
 
 isa_ok($body, "threads::tbb::for_int_method", "new for_int_method");

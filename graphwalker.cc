@@ -305,6 +305,7 @@ SV* perl_concurrent_slot::dup( pTHX ) {
 	if (this->owner == my_perl) {
 		rsv = newSV(0);
 		SvSetSV_nosteal(rsv, this->thingy);
+		IF_DEBUG_CLONE("dup'd %x to %x (refcnt = %d)", this->thingy, rsv, SvREFCNT(rsv));
 	}
 	else {
 		IF_DEBUG_CLONE("CLONING %x (refcnt = %d)", this->thingy, SvREFCNT(this->thingy));
