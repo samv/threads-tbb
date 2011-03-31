@@ -94,10 +94,13 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 }
 
 void perl_tbb_init::mark_master_thread_ok() {
-	perl_interpreter_pool::accessor lock;
-	IF_DEBUG_INIT( "I am the master thread");
-	tbb_interpreter_pool.insert( lock, get_raw_thread_id() );
-	lock->second = 0;
+	if (tbb_interpreter_pool.size() == 0) {
+		perl_interpreter_pool::accessor lock;
+		raw_thread_id thread_id = get_raw_thread_id();
+		IF_DEBUG_INIT( "I am the master thread");
+		tbb_interpreter_pool.insert( lock, thread_id );
+		lock->second = 0;
+	}
 }
 
 void perl_tbb_init::setup_worker_inc( pTHX ) {
