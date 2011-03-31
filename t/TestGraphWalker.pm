@@ -136,4 +136,14 @@ make_test
 	sub { bless { foo => 1.0*$_[0] }, "FooHV" },
 	sub { $_[0]->val }, "Test Blessed HV";
 
+sub FooPVMG::val {
+	my $self = shift;
+	$self->{foo}->FETCH(0);
+}
+make_test
+	sub { tie my @a, "threads::tbb::concurrent::array";
+	      push @a, $_[0];
+	      bless { foo => tied(@a) }, "FooPVMG" },
+	sub { $_[0]->val }, "Test Blessed PVMG";
+
 1;

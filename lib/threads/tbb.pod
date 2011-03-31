@@ -5,50 +5,74 @@ threads::tbb - interface to the Threading Building Blocks (TBB) API
 
 =head1 SYNOPSIS
 
- # first instance:
- #   - records %INC
- #   - adds to @INC a closure that keeps a track of loaded modules
+ package Incredible::Threadable;
  use threads::tbb;
 
- unless ($threads::tbb::worker) {  # single script uses can use this
+ sub new {
+     my $class = shift;
+     # make containers which are efficient and thread-safe
+     tie my @input, "threads::tbb::concurrent::array";
+     push @input, @_;  # coming soon: @input = @_
+     tie my @output, "threads::tbb::concurrent::array";
+     bless { input => tied(@input),
+             output => tied(@output), }, $class;
+ }
+
+ sub parallel_transmogrify {
+     my $self = shift;
 
      # Initialize the TBB library, and set a specification of required
      # modules and/or library paths for worker threads.
-     my $tbb = threads::tbb->new(
-         threads => 4,
-         requires => [ $0 ],
-     );
+     my $tbb = threads::tbb->new( requires => [ $0 ] );
 
-     # a concurrent array: lazy, deep copy in and out
-     tie my @data, "threads::tbb::concurrent::array";
+     my $min = 0;
+     my $max = $self->{input}->FETCHSIZE + 1;
+     my $range = threads::tbb::blocked_int->new( $min, $max, 5 );
 
-     push @data, @contents;    # coming soon: @data = @contents;
+     my $body = $tbb->for_int_method( $self, "my_callback" );
 
-     my $range_i = threads::tbb::blocked_int->new(1, $#data + 1, 5);
-
-     # make a "body function" which does the work.
-     # coming soon: support for closures
-     my $body = $tbb->for_int_array_func( \@data, "Some::Func" );
-
-     # run the body in parallel
-     $tbb->parallel_for($range_i, $body);
+     $body->parallel_for( $range );
  }
 
- # this is the body function's callback.
- sub Some::Func {
-     my $range = shift;
-     my $array = shift;
+ sub my_callback {
+     my $self = shift;
+     my $int_range = shift;
 
-     for my $idx ($range->begin .. $range->end-1) {
-         my $item = $array->[0];
+     for my $idx ($int_range->begin .. $int_range->end-1) {
+         my $item = $self->{input}->FETCH($idx); # lol FIXME :)
 
-         # do some work with $item...
-         $item->set_foo("bar");
+         my $transmuted = $item->transmogrify;
 
-         # remember to put it back, or your changes might
-         # not be saved.
-         $array->[0] = $item;
+         $self->{output}->STORE($idx, $transmuted);
      }
+ }
+
+
+ sub results {  # coming soon: no need for this hack!  :)
+     my $self = shift;
+     my @res;
+     my $top = $self->{output}->FETCHSIZE-1;
+     for (my $i = 0; $i <= $top; $i++) {
+         push @res, $self->{output}->FETCH($i);
+     }
+ }
+
+ package Item;
+ sub transmogrify {
+     my $self = shift;
+     "Ex-$self->{id}";
+ }
+
+ package main;
+ use feature 'say';
+
+ unless ($threads::tbb::worker) {  # single script uses can use this
+     my $parallel_transmogrificator = Incredible::Threadable->new(
+         map { chomp; bless { id => $_ }, "Item" } <>
+     );
+
+     $parallel_transmogrificator->parallel_transmogrify();
+     say $_ for $parallel_transmogrificator->results();
  }
 
 =head1 DESCRIPTION
