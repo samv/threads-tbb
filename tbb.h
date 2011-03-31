@@ -144,8 +144,12 @@ class perl_for_int_method {
 public:
 	std::string methodname;
 perl_for_int_method( pTHX_ perl_tbb_init* context, SV* inv_sv, std::string methodname ) :
-	context(context), invocant( my_perl, newSVsv(inv_sv) ), methodname(methodname) {
+	context(context), methodname(methodname) {
 		copied = new perl_concurrent_vector();
+		SV* newsv = newSV(0);
+		SvSetSV_nosteal(newsv, inv_sv);
+		IF_DEBUG_PERLCALL("copied %x to %x (refcnt = %d)", inv_sv, newsv, SvREFCNT(newsv));
+		invocant = perl_concurrent_slot(my_perl, newsv); 
 	};
 	SV* get_invocant( pTHX_ int worker );
 	void operator()( const perl_tbb_blocked_int& r ) const;
