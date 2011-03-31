@@ -5,6 +5,7 @@ threads::tbb - interface to the Threading Building Blocks (TBB) API
 
 =head1 SYNOPSIS
 
+ # this synopsis is available as examples/incredible-threadable.pl
  package Incredible::Threadable;
  use threads::tbb;
 
@@ -47,15 +48,6 @@ threads::tbb - interface to the Threading Building Blocks (TBB) API
      }
  }
 
- sub results {  # coming soon: no need for this hack!  :)
-     my $self = shift;
-     my @res;
-     my $top = $self->{output}->FETCHSIZE-1;
-     for (my $i = 0; $i <= $top; $i++) {
-         push @res, $self->{output}->FETCH($i);
-     }
- }
-
  package Item;
  sub transmogrify {
      my $self = shift;
@@ -71,7 +63,7 @@ threads::tbb - interface to the Threading Building Blocks (TBB) API
      );
 
      $parallel_transmogrificator->parallel_transmogrify();
-     say $_ for $parallel_transmogrificator->results();
+     say "Turned to $_" for $parallel_transmogrificator->results();
  }
 
 =head1 DESCRIPTION
@@ -286,7 +278,7 @@ L<threads::tbb::concurrent>
 The calling convention of C<parallel_for> allows you to manually
 specify the "grain size" - the iterations required to to useful work.
 It also reduces time spent in function call overhead.  However, a
-simpler API is also available:
+simpler API could be possible:
 
   use threads::tbb;
 

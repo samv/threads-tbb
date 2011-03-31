@@ -40,15 +40,7 @@
      }
  }
 
- use feature 'say';
- sub print_results {  # coming soon: no need for this hack!  :)
-     my $self = shift;
-     my $top = $#{ $self->{output} };
-     for (my $i = 0; $i <= $top; $i++) {
-	     my $y = $self->{output}->[$i];
-	     say "Item ".($i+1)."/".($top+1).": '$y->[0]' (w$y->[1])";
-     }
- }
+ sub results { @{ $_[0]->{output} } }
 
  package Item;
  sub transmogrify {
@@ -57,6 +49,7 @@
  }
 
  package main;
+ use feature 'say';
 
  unless ($threads::tbb::worker) {  # single script uses can use this
      my $parallel_transmogrificator = Incredible::Threadable->new(
@@ -65,5 +58,6 @@
 
      $parallel_transmogrificator->parallel_transmogrify();
      my $x = $parallel_transmogrificator;
-     $parallel_transmogrificator->print_results;
+     say "Turned to '$_->[0]' from ".($_->[1]?"worker $_->[1]":"master thread")
+	     for $parallel_transmogrificator->results;
  }
