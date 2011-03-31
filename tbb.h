@@ -24,6 +24,13 @@ typedef tbb::spin_mutex      mutex_t;
 #define IF_DEBUG(e)
 
 #define IF_DEBUG_THR(msg, e...) IF_DEBUG(_warn("thr %x: " msg "\n", get_raw_thread_id(), ##e))
+#if _WIN32||_WIN64
+#define raw_thread_id DWORD
+#define get_raw_thread_id() GetCurrentThreadId()
+#else
+#define raw_thread_id pthread_t
+#define get_raw_thread_id() pthread_self()
+#endif
 
 // then uncomment these to to enable a type of debug message
 //#define DEBUG_PERLCALL
@@ -169,13 +176,6 @@ perl_for_int_method( pTHX_ perl_tbb_init* context, SV* inv_sv, std::string metho
  *
  */
 
-#if _WIN32||_WIN64
-#define raw_thread_id DWORD
-#define get_raw_thread_id() GetCurrentThreadId()
-#else
-#define raw_thread_id pthread_t
-#define get_raw_thread_id() pthread_self()
-#endif
 
 // for the concurrent_hash_map: necessary transformation and
 // comparison functions.
