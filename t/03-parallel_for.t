@@ -6,6 +6,7 @@
 use Test::More no_plan;
 use strict;
 use lib "t";
+use StaticCB;  # master thread needs it too
 BEGIN { use_ok("threads::tbb") };
 
 tie my @array, "threads::tbb::concurrent::array";

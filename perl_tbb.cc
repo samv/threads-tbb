@@ -79,10 +79,16 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 	//av_extend(worker_av, init->seq);
 	SV* flag = *av_fetch( worker_av, init->seq, 1 );
 	if (!SvOK(flag)) {
-		if (!fresh) {
-			init->setup_worker_inc(aTHX);
+		if ( lock->second != 0 ) {
+			IF_DEBUG_INIT("setting up worker %d for work", lock->second);
+			if (!fresh) {
+				init->setup_worker_inc(aTHX);
+			}
+			init->load_modules(my_perl);
 		}
-		init->load_modules(my_perl);
+		else {
+			IF_DEBUG_INIT("not setting up worker %d for work, master thread", lock->second);
+		}
 		sv_setiv(flag, 1);
 	}
 }
