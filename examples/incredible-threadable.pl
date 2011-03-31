@@ -7,8 +7,8 @@
      tie my @input, "threads::tbb::concurrent::array";
      push @input, @_;  # coming soon: @input = @_
      tie my @output, "threads::tbb::concurrent::array";
-     bless { input => tied(@input),
-             output => tied(@output), }, $class;
+     bless { input => \@input,
+             output => \@output, }, $class;
  }
 
  sub parallel_transmogrify {
@@ -19,7 +19,7 @@
      my $tbb = threads::tbb->new( requires => [ $0 ] );
 
      my $min = 0;
-     my $max = $self->{input}->FETCHSIZE;
+     my $max = scalar(@{ $self->{input} });
      my $range = threads::tbb::blocked_int->new( $min, $max, 1);
 
      my $body = $tbb->for_int_method( $self, "my_callback" );
@@ -32,20 +32,20 @@
      my $int_range = shift;
 
      for my $idx ($int_range->begin .. $int_range->end-1) {
-         my $item = $self->{input}->FETCH($idx); # lol FIXME :)
+         my $item = $self->{input}->[$idx];
 
          my $transmuted = $item->transmogrify;
 
-         $self->{output}->STORE($idx, [$transmuted, $threads::tbb::worker||0]);
+         $self->{output}->[$idx] = [$transmuted, $threads::tbb::worker||0];
      }
  }
 
  use feature 'say';
  sub print_results {  # coming soon: no need for this hack!  :)
      my $self = shift;
-     my $top = $self->{output}->FETCHSIZE-1;
+     my $top = $#{ $self->{output} };
      for (my $i = 0; $i <= $top; $i++) {
-	     my $y = $self->{output}->FETCH($i);
+	     my $y = $self->{output}->[$i];
 	     say "Item ".($i+1)."/".($top+1).": '$y->[0]' (w$y->[1])";
      }
  }

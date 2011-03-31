@@ -5,7 +5,8 @@ use Data::Dumper;
 
 use Time::HiRes qw(sleep);
 use constant DEBUG => 0;
-require Devel::Peek if DEBUG;
+BEGIN { if (DEBUG) { require Devel::Peek; Devel::Peek->import; } }
+
 
 sub doTest {
 	my $body = shift;
@@ -145,5 +146,15 @@ make_test
 	      push @a, $_[0];
 	      bless { foo => tied(@a) }, "FooPVMG" },
 	sub { $_[0]->val }, "Test Blessed PVMG";
+
+sub TiedArray::val {
+	my $self = shift;
+	$self->[1]->[0];
+}
+make_test
+	sub { tie my @a, "threads::tbb::concurrent::array";
+	      push @a, $_[0];
+	      bless [ tied(@a), \@a ], "TiedArray" },
+	sub { $_[0]->val }, "Test Tied Array";
 
 1;

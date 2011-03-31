@@ -48,6 +48,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 	done[&other_perl->Isv_undef] = graph_walker_slot( &PL_sv_undef, true );
 
 	SV* it;
+	MAGIC* mg;
 	while (todo.size()) {
 		it = todo.back();
 		IF_DEBUG_CLONE("cloning %x", it);
@@ -60,29 +61,60 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 			IF_DEBUG_CLONE("   seen, built");
 			continue;
 		}
-		if (SvROK(it)) {
+		// mg_find is a pTHX_ function but should be OK...
+		if (mg = SvTIED_mg(it, PERL_MAGIC_tied)) {
+			IF_DEBUG_CLONE("   SV is TIED %s", sv_reftype(it,0));
+			if (isnew) {
+				done[it] = graph_walker_slot(newSV(0));
+				IF_DEBUG_CLONE("   SV is new");
+			}
+			if ( ! mg->mg_obj ) {
+				croak("no magic object to be found for tied %s at %x", sv_reftype(it,0), it);
+			}
+			target = done.find( mg->mg_obj );
+			if ( target == done.end() ) {
+				IF_DEBUG_CLONE("   tied SV (%x) unseen", mg->mg_obj);
+				todo.push_back(it);
+				todo.push_back(mg->mg_obj);
+			}
+			else {
+				SV* obj = (*item).second.tsv;
+				SV* mg_obj = (*target).second.tsv;
+				IF_DEBUG_CLONE("   upgrading %x to type %d", obj, SvTYPE(it));
+				SvUPGRADE(obj, SvTYPE(it));
+				sv_magic(obj, mg_obj, PERL_MAGIC_tied, 0, 0);
+				IF_DEBUG_CLONE("   made magic: %x (rc=%d)", mg_obj, SvREFCNT(mg_obj));
+				done[it].built = true;
+			}
+		}
+		else if (SvROK(it)) {
 			IF_DEBUG_CLONE("   SV is ROK (%s)", sv_reftype(it,0));
 			if (isnew) {
 				// '0' means that the item is on todo
 				done[it] = graph_walker_slot(newSV(0));
+				item = done.find( it );
 				IF_DEBUG_CLONE("   SV is new");
 			}
 
 			// fixme: $x = \$x circular refs
 			target = done.find( SvRV(it) );
 			if (target == done.end()) {
-				IF_DEBUG_CLONE("   refers to unseen ref");
+				IF_DEBUG_CLONE("   refers to unseen ref %x", SvRV(it));
 				// nothing, so remember to init self later.
 				todo.push_back(it);
 				todo.push_back(SvRV(it));
 			}
 			else {
-				IF_DEBUG_CLONE("   refers to seen ref");
+				IF_DEBUG_CLONE("   refers to seen ref %x (%x)", SvRV(it), (*target).second.tsv);
 				// target exists!  set the ref
+				IF_DEBUG_CLONE("   (upgrade %x to RV)", (*item).second.tsv);
 				SvUPGRADE((*item).second.tsv, SVt_RV);
 				SvRV_set((*item).second.tsv, (*target).second.tsv);
+				IF_DEBUG_CLONE("   (set RV targ)");
 				SvROK_on((*item).second.tsv);
+				IF_DEBUG_CLONE("   (set ROK)");
 				SvREFCNT_inc((*target).second.tsv);
+				IF_DEBUG_CLONE("   (inc rc to %d)", SvREFCNT((*target).second.tsv));
 				sv_2mortal((*item).second.tsv);
 				
 				IF_DEBUG_CLONE("   %x now refers to %x: ",
