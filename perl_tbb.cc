@@ -240,7 +240,8 @@ SV* perl_for_int_method::get_invocant( pTHX_ int worker ) {
 	else {
 		copied->grow_to_at_least(worker+1);
 		perl_concurrent_slot x = (*copied)[worker];
-		if (!x.thingy) {
+		if (!x.thingy || (x.owner != my_perl) ) {
+			IF_DEBUG_PERLCALL( "about to clone %x for worker %d", invocant.thingy, worker );
 			x = perl_concurrent_slot( my_perl, invocant.dup( my_perl ) );
 			(*copied)[worker] = x;
 		}
