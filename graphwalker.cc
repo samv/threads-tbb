@@ -300,7 +300,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 	return rv;
 }
 
-SV* perl_concurrent_slot::dup( pTHX ) {
+SV* perl_concurrent_item::dup( pTHX ) {
 	SV* rsv;
 	if (this->owner == my_perl) {
 		rsv = newSV(0);
