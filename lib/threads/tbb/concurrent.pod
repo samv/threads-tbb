@@ -101,23 +101,21 @@ interpreter for a single program run.
 
 =head2 Allowed data types
 
-The initial implementation of the deep copying has very much
-the same limitations as L<threads::shared> - in that only a
-certain core set of "pure" perl objects can be passed
-through.
+The initial implementation of the deep copying has very much the same
+limitations as L<threads::shared> - in that only a certain core set of
+"pure" perl objects can be passed through.
 
-Passing through blessed pointers / XS objects should be
-considered dangerous; you'll usually be looking at the same
-C struct in both threads.  You should consider whether or
-not this is a good idea for you.
+Passing through blessed pointers / XS objects should be considered
+dangerous; you'll usually be looking at the same C struct in both
+threads.  You should consider whether or not this is a good idea for
+you.  If in doubt, C<Storable::dclone> on the way in.
 
 As closures are not supported, inside-out objects cannot be
 passed - and in fact they'd likely be very inefficient.
 
-Not yet supported are MAD properties, tied objects or other
-forms of magic.  Overload is currently thought to be safe.
-Filehandles I do intend to support, but they are not
-implemented yet.  Closures are on the near TODO list.
+Not yet supported are MAD properties or "strange" forms of magic.
+Overload is currently thought to be safe.  Filehandles I do intend to
+support, but they are not implemented yet.
 
 =head1 On memory copying stability
 
