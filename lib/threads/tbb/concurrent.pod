@@ -6,6 +6,7 @@ threads::tbb::concurrent:: - namespace for concurrent TBB containers
 
  use threads::tbb;
 
+ # ARRAY tie interface:
  tie my @array, "threads::tbb::concurrent::array";
  $array[0] = $val;
  push @array, @items;
@@ -31,6 +32,15 @@ threads::tbb::concurrent:: - namespace for concurrent TBB containers
  my $iterator = tied(%hash)->iterator;
  my ($key, $slot) = $iterator->();
 
+ # SCALAR tie interface:
+ # not really concurrent in any way; and every access may copy in to
+ # the thread which requests it.  these wrappers for scalars can be
+ # passed around via the various containers.
+ tie my $item, "threads::tbb::concurrent::item";
+ $item = $val;
+ print $item;
+
+ # TODO:
 =head1 DESCRIPTION
 
 The C<threads::tbb::concurrent::> series of modules wrap
@@ -41,6 +51,9 @@ exists; see L<threads::tbb::concurrent::array>.
 Note that they are only concurrent if you restrict yourself to the
 concurrent APIs.  Other ways of accessing the containers may result in
 programs with race conditions.
+
+Also, the SCALAR interface: L<threads::tbb::concurrent::item> has no
+locking mechanism.
 
 =head2 Lazy deep copying
 
