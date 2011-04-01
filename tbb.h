@@ -42,25 +42,25 @@ typedef tbb::spin_mutex      mutex_t;
 //#define DEBUG_PERLCALL_PEEK
 
 #ifdef DEBUG_PERLCALL
-#define IF_DEBUG_PERLCALL(msg, e...) IF_DEBUG_THR(msg, ##e)
+#define IF_DEBUG_PERLCALL(msg, e...) IF_DEBUG_THR("[PERLCALL] " msg, ##e)
 #else
 #define IF_DEBUG_PERLCALL(msg, e...)
 #endif
 
 #ifdef DEBUG_VECTOR
-#define IF_DEBUG_VECTOR(msg, e...) IF_DEBUG_THR(msg, ##e)
+#define IF_DEBUG_VECTOR(msg, e...) IF_DEBUG_THR("[VECTOR] " msg, ##e)
 #else
 #define IF_DEBUG_VECTOR(msg, e...)
 #endif
 
 #ifdef DEBUG_INIT
-#define IF_DEBUG_INIT(msg, e...) IF_DEBUG_THR(msg, ##e)
+#define IF_DEBUG_INIT(msg, e...) IF_DEBUG_THR("[INIT] " msg, ##e)
 #else
 #define IF_DEBUG_INIT(msg, e...)
 #endif
 
 #ifdef DEBUG_CLONE
-#define IF_DEBUG_CLONE(msg, e...) IF_DEBUG_THR(msg, ##e)
+#define IF_DEBUG_CLONE(msg, e...) IF_DEBUG_THR("[CLONE] " msg, ##e)
 #else
 #define IF_DEBUG_CLONE(msg, e...)
 #endif
@@ -175,7 +175,7 @@ perl_for_int_method( pTHX_ perl_tbb_init* context, SV* inv_sv, std::string metho
  * Unix, DWORD on Windows as in tbb itself) to a bool which indicates
  * whether or not the thread has been started.
  *
- * As the accessor 'class' represents an exclusive lock on the slot,
+ * As the accessor 'class' represents an exclusive lock on the item,
  * we use it for an interpreter mutex as well.  The first time it is
  * read, if its value is false then a PerlInterpreter is created.
  *
