@@ -241,7 +241,7 @@ perl_concurrent_vector::PUSH(...)
 		}
 	}
 
-static perl_concurrent_vector *
+perl_concurrent_vector *
 TIEARRAY(classname)
 	char* classname;
   CODE:
