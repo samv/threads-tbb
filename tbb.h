@@ -216,6 +216,29 @@ public:
 // the global pointer to the interpreter locks
 static perl_interpreter_pool tbb_interpreter_pool = perl_interpreter_pool();
 
+struct ptr_compare {
+	static size_t hash( void* const& x ) {
+		size_t h = 0;
+		if (sizeof(void*) != sizeof(size_t) ) {
+			int i = 0;
+			for (const char* s = (char*)x; i<sizeof(void*); ++s) {
+				h = (h*17) ^ *s;
+				i++;
+			}
+		}
+		else {
+			h = *( (size_t*)x );
+		}
+		return h;
+	}
+	
+	static bool equal( void* const& a, void* const& b) {
+		return (a == b);
+	}
+};
+
+typedef tbb::concurrent_hash_map<void*, int, ptr_compare> ptr_to_worker;
+static ptr_to_worker tbb_interpreter_numbers = ptr_to_worker();
 //typedef perl_interpreter_pool::accessor tbb_interpreter_lock;
 
 // the crazy clone function :)

@@ -42,6 +42,16 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 #ifdef DEBUG_PERLCALL
 		IF_DEBUG(fprintf(stderr, "thr %x: allocated an interpreter for worker %d\n", thread_id, lock->second));
 #endif
+
+		{
+			ptr_to_worker::accessor numlock;
+			bool found = tbb_interpreter_numbers.find( numlock, my_perl );
+			if (!found) {
+				tbb_interpreter_numbers.insert( numlock, my_perl );
+			}
+			(*numlock).second = lock->second;
+		}
+
 		// probably unnecessary
 		PERL_SET_CONTEXT(my_perl);
 		perl_construct(my_perl);
@@ -100,6 +110,14 @@ void perl_tbb_init::mark_master_thread_ok() {
 		IF_DEBUG_INIT( "I am the master thread");
 		tbb_interpreter_pool.insert( lock, thread_id );
 		lock->second = 0;
+
+		PerlInterpreter* my_perl = PERL_GET_THX;
+		ptr_to_worker::accessor numlock;
+		bool found = tbb_interpreter_numbers.find( numlock, my_perl );
+		if (!found) {
+			tbb_interpreter_numbers.insert( numlock, my_perl );
+		}
+		(*numlock).second = 0;
 	}
 }
 
