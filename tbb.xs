@@ -131,8 +131,16 @@ STORE(self, value)
   perl_concurrent_item* self;
   SV* value;
   CODE:
-  /* FIXME this leaks :( */
-    (*self) = perl_concurrent_item( my_perl, value );
+	if (self->owner == my_perl) {
+		// just go ahead and REFCNT_dec it!
+		SvREFCNT_dec(self->thingy);
+	}
+	else {
+		// queue a message to release it on next grab()
+		tbb_interpreter_freelist.free( *self );
+	}
+	(*self) = perl_concurrent_item( my_perl, value );
+
 
 MODULE = threads::tbb::concurrent::array    PACKAGE = threads::tbb::concurrent::array
 
@@ -183,10 +191,7 @@ perl_concurrent_vector::STORE(i, v)
 			SvREFCNT_dec(o);
 		}
 		else {
-			// for now, leak.  if this works,
-			// then interpreters will need a freelist for
-			// them to decrement when they next run/finish
-			// a task.
+			tbb_interpreter_freelist.free( *slot );
 		}
 	}
         nsv = newSV(0);

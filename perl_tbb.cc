@@ -82,6 +82,13 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 	}
 	else {
 		my_perl = PERL_GET_THX;
+		// anything to free?  If we're using a scalable
+		// allocator, this should also help to re-use memory
+		// we already had allocated.
+		perl_concurrent_item* gonner;
+		while (gonner = tbb_interpreter_freelist.next(my_perl)) {
+			SvREFCNT_dec(gonner);
+		}
 	}
 	
 	AV* worker_av = get_av("threads::tbb::worker", GV_ADD|GV_ADDMULTI);
@@ -342,6 +349,7 @@ void perl_interpreter_freelist::free( const perl_concurrent_item item ) {
 	int worker = (*lock).second;
 	lock.release();
 
+	IF_DEBUG_FREE("queueing to worker %d: %x", worker, item->thingy);
 	(*this)[worker].push(item);
 }
 
@@ -357,6 +365,7 @@ perl_concurrent_item* perl_interpreter_freelist::next( pTHX ) {
 
 	perl_concurrent_item* x = new perl_concurrent_item();
 	if ((*this)[worker].try_pop(*x)) {
+		IF_DEBUG_FREE("next to free: %x", x->thingy);
 		return x;
 	}
 	else {
