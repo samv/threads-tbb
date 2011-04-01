@@ -314,3 +314,10 @@ SV* perl_concurrent_item::dup( pTHX ) {
 	}
 	return rsv;
 }
+
+SV* perl_concurrent_item::clone( pTHX ) {
+	IF_DEBUG_CLONE("CLONING %x (refcnt = %d)", this->thingy, SvREFCNT(this->thingy));
+	SV* rsv = clone_other_sv( my_perl, this->thingy, this->owner );
+	SvREFCNT_inc(rsv);
+	return rsv;
+}

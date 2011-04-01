@@ -91,7 +91,8 @@ public:
         perl_concurrent_item( ) : thingy(0) {};
 	perl_concurrent_item( PerlInterpreter* owner, SV* thingy )
 		: thingy(thingy), owner(owner) {};
-	SV* dup( pTHX );
+	SV* dup( pTHX );    // get if same interpreter, clone otherwise
+	SV* clone( pTHX );  // always clone
 };
 
 // threads::tbb::init

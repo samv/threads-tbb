@@ -233,20 +233,12 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 // this function might be made into a helper / base class at some point...
 SV* perl_for_int_method::get_invocant( pTHX_ int worker ) {
 	IF_DEBUG_PERLCALL( "getting invocant for worker %d", worker );
-	if ( my_perl == invocant.owner ) {
-		IF_DEBUG_PERLCALL( "dup directly" );
-		return invocant.dup( my_perl );
+	copied->grow_to_at_least(worker+1);
+	perl_concurrent_item x = (*copied)[worker];
+	if (!x.thingy || (x.owner != my_perl)) {
+		x = perl_concurrent_item( my_perl, invocant.clone( my_perl ) );
 	}
-	else {
-		copied->grow_to_at_least(worker+1);
-		perl_concurrent_item x = (*copied)[worker];
-		if (!x.thingy || (x.owner != my_perl) ) {
-			IF_DEBUG_PERLCALL( "about to clone %x for worker %d", invocant.thingy, worker );
-			x = perl_concurrent_item( my_perl, invocant.dup( my_perl ) );
-			(*copied)[worker] = x;
-		}
-		return x.dup( my_perl );
-	}
+	return x.dup( my_perl );
 }
 
 // body function for for_int_method
