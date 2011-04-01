@@ -335,3 +335,31 @@ void perl_for_int_method::operator()( const perl_tbb_blocked_int& r ) const {
 			   r.begin(), r.end() );
 };
 
+// freeing old (values of) slots.
+void perl_interpreter_freelist::free( const perl_concurrent_item item ) {
+	ptr_to_worker::const_accessor lock;
+	bool found = tbb_interpreter_numbers.find( lock, item.owner );
+	int worker = (*lock).second;
+	lock.release();
+
+	(*this)[worker].push(item);
+}
+
+void perl_interpreter_freelist::free( PerlInterpreter* owner, SV* item ) {
+	this->free( perl_concurrent_item( owner, item ) );
+}
+
+perl_concurrent_item* perl_interpreter_freelist::next( pTHX ) {
+	ptr_to_worker::const_accessor lock;
+	bool found = tbb_interpreter_numbers.find( lock, my_perl );
+	int worker = (*lock).second;
+	lock.release();
+
+	perl_concurrent_item* x = new perl_concurrent_item();
+	if ((*this)[worker].try_pop(*x)) {
+		return x;
+	}
+	else {
+		return 0;
+	}
+}

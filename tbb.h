@@ -4,6 +4,7 @@
 #include "tbb/task_scheduler_init.h"
 #include "tbb/blocked_range.h"
 #include "tbb/tbb_stddef.h"
+#include "tbb/concurrent_queue.h"
 #include "tbb/concurrent_vector.h"
 #include "tbb/concurrent_hash_map.h"
 #include "tbb/parallel_for.h"
@@ -239,6 +240,19 @@ struct ptr_compare {
 
 typedef tbb::concurrent_hash_map<void*, int, ptr_compare> ptr_to_worker;
 static ptr_to_worker tbb_interpreter_numbers = ptr_to_worker();
+
+// freelist; next time interpreter wakes, it will free the items in this
+// list.
+class perl_interpreter_freelist : public tbb::concurrent_vector<tbb::strict_ppl::concurrent_queue<perl_concurrent_item> > {
+public:
+	void free( PerlInterpreter* owner, SV *sv );
+	void free( const perl_concurrent_item item );
+	perl_concurrent_item* next( pTHX );
+};
+
+// the global pointer to the interpreter locks
+static perl_interpreter_freelist tbb_interpreter_freelist = perl_interpreter_freelist();
+
 //typedef perl_interpreter_pool::accessor tbb_interpreter_lock;
 
 // the crazy clone function :)
