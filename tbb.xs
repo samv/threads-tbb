@@ -154,6 +154,11 @@ MODULE = threads::tbb::concurrent::array    PACKAGE = threads::tbb::concurrent::
 
 perl_concurrent_vector *
 perl_concurrent_vector::new()
+  CODE:
+	RETVAL = new perl_concurrent_vector();
+  	RETVAL->refcnt++;
+OUTPUT:
+  	RETVAL
 
 SV *
 perl_concurrent_vector::FETCH(i)
@@ -262,9 +267,23 @@ TIEARRAY(classname)
 	char* classname;
   CODE:
 	RETVAL = new perl_concurrent_vector();
+	RETVAL->refcnt++;
         ST(0) = sv_newmortal();
         sv_setref_pv( ST(0), classname, (void*)RETVAL );
 	
+void
+perl_concurrent_vector::DESTROY()
+CODE:
+	if (THIS != NULL) {
+		if (--THIS->refcnt > 0) {
+			IF_DEBUG_LEAK("perl_concurrent_vector::DESTROY; %x => refcnt=%d", THIS, THIS->refcnt);
+		}
+		else {
+			IF_DEBUG_LEAK("perl_concurrent_vector::DESTROY; delete %x", THIS);
+			delete THIS;
+		}
+	}
+
 MODULE = threads::tbb::for_int_array_func	PACKAGE = threads::tbb::for_int_array_func
 
 perl_for_int_array_func*
@@ -275,6 +294,11 @@ perl_for_int_array_func::new( context, array, funcname )
 
 perl_concurrent_vector*
 perl_for_int_array_func::get_array()
+CODE:
+	RETVAL = THIS->get_array();
+	RETVAL->refcnt++;
+OUTPUT:
+	RETVAL
 
 void
 parallel_for(self, range)

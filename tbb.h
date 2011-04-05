@@ -89,7 +89,11 @@ perl_tbb_blocked_int( perl_tbb_blocked_int& oth, tbb::split sp )
 
 // threads::tbb::concurrent::array
 class perl_concurrent_item;
-class perl_concurrent_vector : public tbb::concurrent_vector<perl_concurrent_item> { };
+class perl_concurrent_vector : public tbb::concurrent_vector<perl_concurrent_item> {
+public:
+	int refcnt;
+	perl_concurrent_vector() : refcnt(0) {}
+};
 
 class perl_concurrent_item {
 public:
