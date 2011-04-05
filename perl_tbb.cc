@@ -178,6 +178,8 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 	SV *isv, *inv, *range;
 	perl_for_int_array_func body_copy = *this;
 	perl_tbb_blocked_int r_copy = r;
+	IF_DEBUG_LEAK("my for_int_array_func: %x", &body_copy);
+	IF_DEBUG_LEAK("my perl_tbb_blocked_int: %x", &r);
 
 	// this declares and loads 'my_perl' variables from TLS
 	dTHX;
@@ -193,13 +195,11 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 	PUSHMARK(SP);
 
 	isv = newSV(0);
-	inv = sv_2mortal( sv_setref_pv(isv, "threads::tbb::for_int_array_func", &body_copy ));
-	SvREFCNT_inc(inv);
+	inv = sv_setref_pv(isv, "threads::tbb::for_int_array_func", &body_copy );
 	XPUSHs(inv);
 
 	isv = newSV(0);
-	range = sv_2mortal( sv_setref_pv(isv, "threads::tbb::blocked_int", &r_copy ));
-	SvREFCNT_inc(range);
+	range = sv_setref_pv(isv, "threads::tbb::blocked_int", &r_copy );
 	XPUSHs(range);
 
 	//   // set the global stack pointer to the same as our local copy
@@ -220,6 +220,10 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 	}
 	IF_DEBUG_PERLCALL( "($@ ok)" );
 
+	sv_setiv(SvRV(inv), 0);
+	SvREFCNT_dec(inv);
+	sv_setiv(SvRV(range), 0);
+	SvREFCNT_dec(range);
 	//   // free up those temps & PV return value
 	FREETMPS;
 	IF_DEBUG_PERLCALL( "(FREETMPS ok)" );

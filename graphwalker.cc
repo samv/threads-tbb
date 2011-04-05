@@ -285,6 +285,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				break;
 			case SVt_PVMG:
 				IF_DEBUG_CLONE("     => PVMG (%x)", SvIV(it));
+				IF_DEBUG_LEAK("new PVMG: %x", SvIV(it));
 				done[it] = graph_walker_slot(sv_2mortal(newSViv(SvIV(it))), true);
 				break;
 			default:

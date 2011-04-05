@@ -37,6 +37,7 @@ typedef tbb::spin_mutex      mutex_t;
 //#define DEBUG_VECTOR
 //#define DEBUG_INIT
 //#define DEBUG_CLONE
+//#define DEBUG_LEAK
 
 // this one is likely to break everything
 //#define DEBUG_PERLCALL_PEEK
@@ -63,6 +64,12 @@ typedef tbb::spin_mutex      mutex_t;
 #define IF_DEBUG_CLONE(msg, e...) IF_DEBUG_THR("[CLONE] " msg, ##e)
 #else
 #define IF_DEBUG_CLONE(msg, e...)
+#endif
+
+#ifdef DEBUG_LEAK
+#define IF_DEBUG_LEAK(msg, e...) IF_DEBUG_THR("[LEAK] " msg, ##e)
+#else
+#define IF_DEBUG_LEAK(msg, e...)
 #endif
 
 //**
