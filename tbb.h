@@ -141,7 +141,9 @@ class perl_for_int_array_func {
 	perl_tbb_init* context;
 	perl_concurrent_vector* xarray;
 public:
+	int refcnt;
         perl_for_int_array_func( perl_tbb_init* context, perl_concurrent_vector* xarray, std::string funcname ) :
+	refcnt(0),
 	funcname(funcname), context(context), xarray(xarray) { };
 	perl_concurrent_vector* get_array() { return xarray; };
 	void operator()( const perl_tbb_blocked_int& r ) const;
