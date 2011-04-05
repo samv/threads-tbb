@@ -89,6 +89,57 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 		}
 		else if (SvROK(it)) {
 			IF_DEBUG_CLONE("   SV is ROK (%s)", sv_reftype(it,0));
+			if (SvOBJECT(SvRV(it))) {
+				IF_DEBUG_CLONE("     In fact, it's blessed");
+				// should first check whether the type gets cloned at all...
+				HV* pkg = SvSTASH(SvRV(it));
+				target = done.find((SV*)pkg);
+				if (target == done.end()) {
+					const char * pkgname = HvNAME_get(pkg);
+					IF_DEBUG_CLONE("     Ok, %s, that's new", pkgname);
+					// not found ... before we map to a local package, call the CLONE_SKIP function to see if we should map this type.
+					const HEK * const hvname = HvNAME_HEK(pkg);
+					GV* const cloner = gv_fetchmethod_autoload(MUTABLE_HV(sv), "CLONE_SKIP", 0);
+					UV status = 0;
+					if (cloner && GvCV(cloner)) {
+						IF_DEBUG_CLONE("     Calling CLONE_SKIP in %s", pkgname);
+						dSP;
+						ENTER;
+						SAVETMPS;
+						PUSHMARK(SP);
+						mXPUSHs(newSVhek(hvname));
+						PUTBACK;
+						call_sv(MUTABLE_SV(GvCV(cloner)), G_SCALAR);
+						SPAGAIN;
+						status = POPu;
+						IF_DEBUG_CLONE("     CLONE_SKIP returned %d", status);
+						PUTBACK;
+						FREETMPS;
+						LEAVE;
+					}
+					else {
+						IF_DEBUG_CLONE("     No CLONE_SKIP defined in %s", pkgname);
+					}
+					if (status) {
+						IF_DEBUG_CLONE("     marking package (%x) as undef", pkg);
+						done[(SV*)pkg] = graph_walker_slot(&PL_sv_undef, true);
+						IF_DEBUG_CLONE("     CLONE SKIP set: mapping SV to undef");
+						done[it] = graph_walker_slot(&PL_sv_undef, true);
+					}
+					else {
+						HV* lpkg = gv_stashpv(pkgname, GV_ADD);
+						done[(SV*)pkg] = graph_walker_slot((SV*)lpkg, true);
+						IF_DEBUG_CLONE("     adding package (%x) to done hash (%x)", pkg, lpkg);
+					}
+					target = done.find((SV*)pkg);
+				}
+				else {
+					if ((*target).second.tsv == &PL_sv_undef) {
+						IF_DEBUG_CLONE("     CLONE SKIP previously set: mapping SV to undef");
+						continue;
+					}
+				}
+			}
 			if (isnew) {
 				// '0' means that the item is on todo
 				done[it] = graph_walker_slot(newSV(0));
@@ -115,7 +166,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				IF_DEBUG_CLONE("   (set ROK)");
 				SvREFCNT_inc((*target).second.tsv);
 				IF_DEBUG_CLONE("   (inc rc to %d)", SvREFCNT((*target).second.tsv));
-				sv_2mortal((*item).second.tsv);
+				(*item).second.tsv;
 				
 				IF_DEBUG_CLONE("   %x now refers to %x: ",
 					       (*item).second.tsv,
@@ -127,14 +178,9 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 					HV* pkg = SvSTASH(SvRV(it));
 					target = done.find((SV*)pkg);
 					if (target == done.end()) {
-						const char * pkgname = HvNAME_get(pkg);
-						HV* lpkg = gv_stashpv(pkgname, GV_ADD);
-						done[(SV*)pkg] = graph_walker_slot((SV*)lpkg, true);
-						sv_bless( (*item).second.tsv, lpkg );
+						IF_DEBUG_CLONE("     couldn't find package in map :(");
 					}
-					else {
-						sv_bless( (*item).second.tsv, (HV*) (*target).second.tsv );
-					}
+					sv_bless( (*item).second.tsv, (HV*) (*target).second.tsv );
 					IF_DEBUG_CLONE("    blessed be! => %s", HvNAME_get(pkg));
 				}
 				done[it].built = true;
@@ -189,7 +235,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 						SvREFCNT_inc(targsv);
 						IF_DEBUG_CLONE("      slot[%d] = %x (refcnt = %d, type = %d, pok = %d, iok = %d)", i, targsv, SvREFCNT(targsv), SvTYPE(targsv), SvPOK(targsv)?1:0, SvIOK(targsv)?1:0);
 					}
-					sv_2mortal((SV*)av);
+					(SV*)av;
 					done[it].built = true;
 				}
 				break;
@@ -249,7 +295,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 						SvREFCNT_inc(*slot);
 						//hv_store( hv, key, key_len, (*target).second.tsv, 0 );
 					}
-					sv_2mortal((SV*)hv);
+					(SV*)hv;
 					//SvREFCNT_inc((SV*)hv);
 					done[it].built = true;
 				}
@@ -263,11 +309,11 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				break;
 			case SVt_IV:
 				IF_DEBUG_CLONE("     => IV (%d)", SvIV(it));
-				done[it] = graph_walker_slot(sv_2mortal(newSViv(SvIV(it))), true);
+				done[it] = graph_walker_slot(newSViv(SvIV(it)), true);
 				break;
 			case SVt_NV:
 				IF_DEBUG_CLONE("     => NV (%g)", SvNV(it));
-				done[it] = graph_walker_slot(sv_2mortal(newSVnv(SvNV(it))), true);
+				done[it] = graph_walker_slot(newSVnv(SvNV(it)), true);
 				break;
 			case SVt_PVNV:	
 				IF_DEBUG_CLONE("     => PVNV (%s, %g)", SvPV_nolen(it), SvNV(it));
@@ -281,11 +327,12 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 			xx:
 				STRLEN len;
 				str = SvPV(it, len);
-				done[it] = graph_walker_slot(sv_2mortal(newSVpv( str, len )), true);
+				done[it] = graph_walker_slot(newSVpv( str, len ), true);
 				break;
 			case SVt_PVMG:
 				IF_DEBUG_CLONE("     => PVMG (%x)", SvIV(it));
-				done[it] = graph_walker_slot(sv_2mortal(newSViv(SvIV(it))), true);
+				IF_DEBUG_LEAK("new PVMG: %x", SvIV(it));
+				done[it] = graph_walker_slot(newSViv(SvIV(it)), true);
 				break;
 			default:
 				croak("unknown SV type %d SVt_PVIV = %d; cannot marshall through concurrent container",

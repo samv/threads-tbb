@@ -62,6 +62,10 @@ set_boot_use( init, boot_use )
 
 void
 perl_tbb_init::DESTROY()
+CODE:
+	IF_DEBUG_LEAK("init::DESTROY; %x", THIS);
+	if (THIS != NULL)
+		delete THIS;
 
 void
 perl_tbb_init::terminate()
@@ -74,6 +78,18 @@ perl_tbb_blocked_int::new( low, high, grain )
 	int low;
 	int high;
 	int grain;
+CODE:
+	RETVAL = new perl_tbb_blocked_int(low, high, grain);
+	IF_DEBUG_LEAK("blocked_int::new; %x", RETVAL);
+OUTPUT:
+	RETVAL
+
+void
+perl_tbb_blocked_int::DESTROY( )
+CODE:
+	IF_DEBUG_LEAK("blocked_int::DESTROY; %x", THIS);
+	if (THIS != NULL)
+		delete THIS;
 
 int
 perl_tbb_blocked_int::size( )
@@ -142,10 +158,22 @@ STORE(self, value)
 	(*self) = perl_concurrent_item( my_perl, value );
 
 
+void
+perl_concurrent_item::DESTROY()
+CODE:
+	IF_DEBUG_LEAK("perl_concurrent_item::DESTROY; %x", THIS);
+	if (THIS != NULL)
+		delete THIS;
+
 MODULE = threads::tbb::concurrent::array    PACKAGE = threads::tbb::concurrent::array
 
 perl_concurrent_vector *
 perl_concurrent_vector::new()
+  CODE:
+	RETVAL = new perl_concurrent_vector();
+  	RETVAL->refcnt++;
+OUTPUT:
+  	RETVAL
 
 SV *
 perl_concurrent_vector::FETCH(i)
@@ -177,7 +205,7 @@ perl_concurrent_vector::STORE(i, v)
 	int i;
 	SV* v;
   PREINIT:
-        SV* nsv;
+       SV* nsv;
   PPCODE:
 	IF_DEBUG_VECTOR("STORE (%d, %x) (refcnt = %d)", i, v, SvREFCNT(v));
 	IF_DEBUG_VECTOR("%x->grow_to_at_least(%d)", THIS, i+1);
@@ -251,9 +279,25 @@ TIEARRAY(classname)
 	char* classname;
   CODE:
 	RETVAL = new perl_concurrent_vector();
+	RETVAL->refcnt++;
         ST(0) = sv_newmortal();
         sv_setref_pv( ST(0), classname, (void*)RETVAL );
 	
+void
+perl_concurrent_vector::DESTROY()
+CODE:
+	if (THIS != NULL) {
+		if (--THIS->refcnt > 0) {
+			IF_DEBUG_LEAK("perl_concurrent_vector::DESTROY; %x => refcnt=%d", THIS, THIS->refcnt);
+		}
+		else {
+			IF_DEBUG_LEAK("perl_concurrent_vector::DESTROY; delete %x", THIS);
+			delete THIS;
+			// XXX - temporary workaround
+			sv_setiv(SvRV(ST(0)), 0);
+		}
+	}
+
 MODULE = threads::tbb::for_int_array_func	PACKAGE = threads::tbb::for_int_array_func
 
 perl_for_int_array_func*
@@ -264,6 +308,11 @@ perl_for_int_array_func::new( context, array, funcname )
 
 perl_concurrent_vector*
 perl_for_int_array_func::get_array()
+CODE:
+	RETVAL = THIS->get_array();
+	RETVAL->refcnt++;
+OUTPUT:
+	RETVAL
 
 void
 parallel_for(self, range)
@@ -273,6 +322,13 @@ parallel_for(self, range)
         perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
         perl_for_int_array_func body_copy = perl_for_int_array_func(*self);
         parallel_for( range_copy, body_copy );
+
+void
+perl_for_int_array_func::DESTROY()
+CODE:
+	IF_DEBUG_LEAK("for_int_array_func::DESTROY; %x", THIS);
+	if (THIS != NULL)
+		delete THIS;
 
 MODULE = threads::tbb::for_int_method	PACKAGE = threads::tbb::for_int_method
 
@@ -295,6 +351,13 @@ parallel_for(self, range)
 	perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
 	perl_for_int_method body_copy = perl_for_int_method(*self);
 	parallel_for( range_copy, body_copy );
+
+void
+perl_for_int_method::DESTROY()
+CODE:
+	IF_DEBUG_LEAK("for_int_method::DESTROY; %x", THIS);
+	if (THIS != NULL)
+		delete THIS;
 
 MODULE = threads::tbb		PACKAGE = threads::tbb
 

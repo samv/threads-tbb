@@ -39,6 +39,7 @@ typedef tbb::spin_mutex      mutex_t;
 //#define DEBUG_INIT
 //#define DEBUG_CLONE
 //#define DEBUG_FREE
+//#define DEBUG_LEAK
 
 // this one is likely to break everything
 //#define DEBUG_PERLCALL_PEEK
@@ -73,6 +74,12 @@ typedef tbb::spin_mutex      mutex_t;
 #define IF_DEBUG_FREE(msg, e...)
 #endif
 
+#ifdef DEBUG_LEAK
+#define IF_DEBUG_LEAK(msg, e...) IF_DEBUG_THR("[LEAK] " msg, ##e)
+#else
+#define IF_DEBUG_LEAK(msg, e...)
+#endif
+
 //**
 //*  Perl-mapped classes
 //*/
@@ -90,7 +97,11 @@ perl_tbb_blocked_int( perl_tbb_blocked_int& oth, tbb::split sp )
 
 // threads::tbb::concurrent::array
 class perl_concurrent_item;
-class perl_concurrent_vector : public tbb::concurrent_vector<perl_concurrent_item> { };
+class perl_concurrent_vector : public tbb::concurrent_vector<perl_concurrent_item> {
+public:
+	int refcnt;
+	perl_concurrent_vector() : refcnt(0) {}
+};
 
 class perl_concurrent_item {
 public:
@@ -138,7 +149,9 @@ class perl_for_int_array_func {
 	perl_tbb_init* context;
 	perl_concurrent_vector* xarray;
 public:
+	int refcnt;
         perl_for_int_array_func( perl_tbb_init* context, perl_concurrent_vector* xarray, std::string funcname ) :
+	refcnt(0),
 	funcname(funcname), context(context), xarray(xarray) { };
 	perl_concurrent_vector* get_array() { return xarray; };
 	void operator()( const perl_tbb_blocked_int& r ) const;
