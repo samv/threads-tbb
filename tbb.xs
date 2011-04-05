@@ -281,6 +281,8 @@ CODE:
 		else {
 			IF_DEBUG_LEAK("perl_concurrent_vector::DESTROY; delete %x", THIS);
 			delete THIS;
+			// XXX - temporary workaround
+			sv_setiv(SvRV(ST(0)), 0);
 		}
 	}
 
