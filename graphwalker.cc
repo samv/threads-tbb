@@ -89,6 +89,57 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 		}
 		else if (SvROK(it)) {
 			IF_DEBUG_CLONE("   SV is ROK (%s)", sv_reftype(it,0));
+			if (SvOBJECT(SvRV(it))) {
+				IF_DEBUG_CLONE("     In fact, it's blessed");
+				// should first check whether the type gets cloned at all...
+				HV* pkg = SvSTASH(SvRV(it));
+				target = done.find((SV*)pkg);
+				if (target == done.end()) {
+					const char * pkgname = HvNAME_get(pkg);
+					IF_DEBUG_CLONE("     Ok, %s, that's new", pkgname);
+					// not found ... before we map to a local package, call the CLONE_SKIP function to see if we should map this type.
+					const HEK * const hvname = HvNAME_HEK(pkg);
+					GV* const cloner = gv_fetchmethod_autoload(MUTABLE_HV(sv), "CLONE_SKIP", 0);
+					UV status = 0;
+					if (cloner && GvCV(cloner)) {
+						IF_DEBUG_CLONE("     Calling CLONE_SKIP in %s", pkgname);
+						dSP;
+						ENTER;
+						SAVETMPS;
+						PUSHMARK(SP);
+						mXPUSHs(newSVhek(hvname));
+						PUTBACK;
+						call_sv(MUTABLE_SV(GvCV(cloner)), G_SCALAR);
+						SPAGAIN;
+						status = POPu;
+						IF_DEBUG_CLONE("     CLONE_SKIP returned %d", status);
+						PUTBACK;
+						FREETMPS;
+						LEAVE;
+					}
+					else {
+						IF_DEBUG_CLONE("     No CLONE_SKIP defined in %s", pkgname);
+					}
+					if (status) {
+						IF_DEBUG_CLONE("     marking package (%x) as undef", pkg);
+						done[(SV*)pkg] = graph_walker_slot(&PL_sv_undef, true);
+						IF_DEBUG_CLONE("     CLONE SKIP set: mapping SV to undef");
+						done[it] = graph_walker_slot(&PL_sv_undef, true);
+					}
+					else {
+						HV* lpkg = gv_stashpv(pkgname, GV_ADD);
+						done[(SV*)pkg] = graph_walker_slot((SV*)lpkg, true);
+						IF_DEBUG_CLONE("     adding package (%x) to done hash (%x)", pkg, lpkg);
+					}
+					target = done.find((SV*)pkg);
+				}
+				else {
+					if ((*target).second.tsv == &PL_sv_undef) {
+						IF_DEBUG_CLONE("     CLONE SKIP previously set: mapping SV to undef");
+						continue;
+					}
+				}
+			}
 			if (isnew) {
 				// '0' means that the item is on todo
 				done[it] = graph_walker_slot(newSV(0));
@@ -127,14 +178,9 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 					HV* pkg = SvSTASH(SvRV(it));
 					target = done.find((SV*)pkg);
 					if (target == done.end()) {
-						const char * pkgname = HvNAME_get(pkg);
-						HV* lpkg = gv_stashpv(pkgname, GV_ADD);
-						done[(SV*)pkg] = graph_walker_slot((SV*)lpkg, true);
-						sv_bless( (*item).second.tsv, lpkg );
+						IF_DEBUG_CLONE("     couldn't find package in map :(");
 					}
-					else {
-						sv_bless( (*item).second.tsv, (HV*) (*target).second.tsv );
-					}
+					sv_bless( (*item).second.tsv, (HV*) (*target).second.tsv );
 					IF_DEBUG_CLONE("    blessed be! => %s", HvNAME_get(pkg));
 				}
 				done[it].built = true;
