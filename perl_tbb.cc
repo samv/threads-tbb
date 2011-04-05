@@ -276,7 +276,6 @@ void perl_for_int_method::operator()( const perl_tbb_blocked_int& r ) const {
 	inv = body_copy.get_invocant( my_perl, interp->second );
 	IF_DEBUG_PERLCALL( "got invocant: %x", inv );
 	sv_2mortal(inv);
-	SvREFCNT_inc(inv);
 	XPUSHs(inv);
 #ifdef DEBUG_PERLCALL_PEEK
 	PUTBACK;
@@ -285,8 +284,7 @@ void perl_for_int_method::operator()( const perl_tbb_blocked_int& r ) const {
 	IF_DEBUG_PERLCALL( "(map_int_body ok)" );
 
 	isv = newSV(0);
-	range = sv_2mortal( sv_setref_pv(isv, "threads::tbb::blocked_int", &r_copy ));
-	SvREFCNT_inc(range);
+	range = sv_setref_pv(isv, "threads::tbb::blocked_int", &r_copy );
 	XPUSHs(range);
 	IF_DEBUG_PERLCALL( "(blocked_int ok)" );
 
@@ -311,6 +309,9 @@ void perl_for_int_method::operator()( const perl_tbb_blocked_int& r ) const {
 	}
 	IF_DEBUG_PERLCALL( "($@ ok)" );
 
+	// manual FREETMPS
+	sv_setiv(SvRV(range), 0);
+	SvREFCNT_dec(range);
 	//   // free up those temps & PV return value
 	FREETMPS;
 	IF_DEBUG_PERLCALL( "(FREETMPS ok)" );
