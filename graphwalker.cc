@@ -166,7 +166,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				IF_DEBUG_CLONE("   (set ROK)");
 				SvREFCNT_inc((*target).second.tsv);
 				IF_DEBUG_CLONE("   (inc rc to %d)", SvREFCNT((*target).second.tsv));
-				sv_2mortal((*item).second.tsv);
+				(*item).second.tsv;
 				
 				IF_DEBUG_CLONE("   %x now refers to %x: ",
 					       (*item).second.tsv,
@@ -235,7 +235,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 						SvREFCNT_inc(targsv);
 						IF_DEBUG_CLONE("      slot[%d] = %x (refcnt = %d, type = %d, pok = %d, iok = %d)", i, targsv, SvREFCNT(targsv), SvTYPE(targsv), SvPOK(targsv)?1:0, SvIOK(targsv)?1:0);
 					}
-					sv_2mortal((SV*)av);
+					(SV*)av;
 					done[it].built = true;
 				}
 				break;
@@ -295,7 +295,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 						SvREFCNT_inc(*slot);
 						//hv_store( hv, key, key_len, (*target).second.tsv, 0 );
 					}
-					sv_2mortal((SV*)hv);
+					(SV*)hv;
 					//SvREFCNT_inc((SV*)hv);
 					done[it].built = true;
 				}
@@ -309,11 +309,11 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				break;
 			case SVt_IV:
 				IF_DEBUG_CLONE("     => IV (%d)", SvIV(it));
-				done[it] = graph_walker_slot(sv_2mortal(newSViv(SvIV(it))), true);
+				done[it] = graph_walker_slot(newSViv(SvIV(it)), true);
 				break;
 			case SVt_NV:
 				IF_DEBUG_CLONE("     => NV (%g)", SvNV(it));
-				done[it] = graph_walker_slot(sv_2mortal(newSVnv(SvNV(it))), true);
+				done[it] = graph_walker_slot(newSVnv(SvNV(it)), true);
 				break;
 			case SVt_PVNV:	
 				IF_DEBUG_CLONE("     => PVNV (%s, %g)", SvPV_nolen(it), SvNV(it));
@@ -327,12 +327,12 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 			xx:
 				STRLEN len;
 				str = SvPV(it, len);
-				done[it] = graph_walker_slot(sv_2mortal(newSVpv( str, len )), true);
+				done[it] = graph_walker_slot(newSVpv( str, len ), true);
 				break;
 			case SVt_PVMG:
 				IF_DEBUG_CLONE("     => PVMG (%x)", SvIV(it));
 				IF_DEBUG_LEAK("new PVMG: %x", SvIV(it));
-				done[it] = graph_walker_slot(sv_2mortal(newSViv(SvIV(it))), true);
+				done[it] = graph_walker_slot(newSViv(SvIV(it)), true);
 				break;
 			default:
 				croak("unknown SV type %d SVt_PVIV = %d; cannot marshall through concurrent container",
