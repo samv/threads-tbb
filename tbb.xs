@@ -150,6 +150,13 @@ STORE(self, value)
   /* FIXME this leaks :( */
     (*self) = perl_concurrent_item( my_perl, value );
 
+void
+perl_concurrent_item::DESTROY()
+CODE:
+	IF_DEBUG_LEAK("perl_concurrent_item::DESTROY; %x", THIS);
+	if (THIS != NULL)
+		delete THIS;
+
 MODULE = threads::tbb::concurrent::array    PACKAGE = threads::tbb::concurrent::array
 
 perl_concurrent_vector *
@@ -339,6 +346,13 @@ parallel_for(self, range)
 	perl_tbb_blocked_int range_copy = perl_tbb_blocked_int(*range);
 	perl_for_int_method body_copy = perl_for_int_method(*self);
 	parallel_for( range_copy, body_copy );
+
+void
+perl_for_int_method::DESTROY()
+CODE:
+	IF_DEBUG_LEAK("for_int_method::DESTROY; %x", THIS);
+	if (THIS != NULL)
+		delete THIS;
 
 MODULE = threads::tbb		PACKAGE = threads::tbb
 
