@@ -147,16 +147,27 @@ void
 STORE(self, value)
   perl_concurrent_item* self;
   SV* value;
+  PREINIT:
+	SV* nsv;
   CODE:
+	IF_DEBUG_FREE("Updating value to %x (rc=%d)", value, SvREFCNT(value));
 	if (self->owner == my_perl) {
-		// just go ahead and REFCNT_dec it!
-		SvREFCNT_dec(self->thingy);
+		if (self->thingy != &PL_sv_undef) {
+			// just go ahead and REFCNT_dec it!
+			IF_DEBUG_FREE("SV %x belongs to me, refcnt => %d", self->thingy, SvREFCNT(self->thingy)-1);
+			SvREFCNT_dec(self->thingy);
+		}
 	}
 	else {
 		// queue a message to release it on next grab()
+		IF_DEBUG_FREE("SV %x belongs to interpreter %x, queueing", self->thingy, self->owner);
 		tbb_interpreter_freelist.free( *self );
 	}
-	(*self) = perl_concurrent_item( my_perl, value );
+        nsv = newSV(0);
+	SvSetSV_nosteal(nsv, value);
+	self->thingy = nsv;
+	self->owner = my_perl;
+	IF_DEBUG_FREE("SV %x now in item, refcnt => %d", self->thingy, SvREFCNT(self->thingy));
 
 
 int

@@ -37,5 +37,7 @@ $scalar = $orig;
 my $copy = $scalar;
 
 is_deeply($copy, $orig, "blessed structures in and out");
+undef($orig);
+$scalar = "foo";
 }
 
