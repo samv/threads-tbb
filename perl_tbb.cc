@@ -164,7 +164,9 @@ void perl_tbb_init::setup_worker_inc( pTHX ) {
 		else {
 			av_unshift( INC_a, 1 );
 			SV* new_path = newSVpv(lrit->c_str(), 0);
+#ifdef DEBUG_INIT
 			IF_DEBUG(fprintf(stderr, "thr %x: added %s to @INC\n", get_raw_thread_id(),lrit->c_str() ));
+#endif
 			SvREFCNT_inc(new_path);
 			av_store( INC_a, 0, new_path );
 		}

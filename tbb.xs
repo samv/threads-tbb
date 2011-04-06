@@ -119,6 +119,7 @@ new( classname )
   CODE:
 	self = new perl_concurrent_item( my_perl, &PL_sv_undef );
 	self->refcnt++;
+	IF_DEBUG_LEAK("perl_concurrent_item::new; %x", self);
         RETVAL = newSV(0);
         sv_setref_pv( RETVAL, classname, (void*)self );
   OUTPUT:
@@ -132,6 +133,7 @@ TIESCALAR(classname)
   CODE:
 	rv = new perl_concurrent_item( my_perl, &PL_sv_undef );
 	rv->refcnt++;
+	IF_DEBUG_LEAK("perl_concurrent_item::TIESCALAR; %x", rv);
         ST(0) = sv_newmortal();
         sv_setref_pv( ST(0), classname, (void*)rv );
 
@@ -251,6 +253,7 @@ perl_concurrent_vector::STORE(i, v)
 			SvREFCNT_dec(o);
 		}
 		else {
+			IF_DEBUG_FREE("SV %x belongs to interpreter %x, queueing", slot->thingy, slot->owner);
 			tbb_interpreter_freelist.free( *slot );
 		}
 	}
