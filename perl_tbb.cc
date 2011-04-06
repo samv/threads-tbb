@@ -87,7 +87,9 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 		// we already had allocated.
 		perl_concurrent_slot* gonner;
 		while (gonner = tbb_interpreter_freelist.next(my_perl)) {
-			SvREFCNT_dec(gonner);
+			IF_DEBUG_FREE("got a gonner: %x; thingy = %x, REFCNT=%d", gonner, gonner->thingy, (gonner->thingy?SvREFCNT(gonner->thingy):-1));
+			SvREFCNT_dec(gonner->thingy);
+			delete gonner;
 		}
 	}
 	
@@ -352,6 +354,7 @@ void perl_interpreter_freelist::free( const perl_concurrent_slot item ) {
 	bool found = tbb_interpreter_numbers.find( lock, item.owner );
 	int worker = (*lock).second;
 	lock.release();
+	this->grow_to_at_least(worker+1);
 
 	IF_DEBUG_FREE("queueing to worker %d: %x", worker, item->thingy);
 	(*this)[worker].push(item);
@@ -366,13 +369,15 @@ perl_concurrent_slot* perl_interpreter_freelist::next( pTHX ) {
 	bool found = tbb_interpreter_numbers.find( lock, my_perl );
 	int worker = (*lock).second;
 	lock.release();
+	this->grow_to_at_least(worker+1);
 
-	perl_concurrent_slot* x = new perl_concurrent_slot();
-	if ((*this)[worker].try_pop(*x)) {
-		IF_DEBUG_FREE("next to free: %x", x->thingy);
-		return x;
+	perl_concurrent_slot x;
+	if ((*this)[worker].try_pop(x)) {
+		IF_DEBUG_FREE("next to free: %x", x.thingy);
+		return new perl_concurrent_slot(x);
 	}
 	else {
+		IF_DEBUG_FREE("returning 0");
 		return 0;
 	}
 }
