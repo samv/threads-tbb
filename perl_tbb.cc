@@ -46,13 +46,9 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 		{
 			ptr_to_worker::accessor numlock;
 			bool found = tbb_interpreter_numbers.find( numlock, my_perl );
-			if (!found) {
-				tbb_interpreter_numbers.insert( numlock, my_perl );
-			}
+			tbb_interpreter_numbers.insert( numlock, my_perl );
 			(*numlock).second = lock->second;
-#ifdef DEBUG_FREE
 			IF_DEBUG(fprintf(stderr, "thr %x: inserted %x => %d (worker) to tbb_interpreter_numbers\n", thread_id, my_perl, lock->second));
-#endif
 			numlock.release();
 		}
 
@@ -129,9 +125,7 @@ void perl_tbb_init::mark_master_thread_ok() {
 		sv_setiv(worker_sv, 0);
 		ptr_to_worker::accessor numlock;
 		bool found = tbb_interpreter_numbers.find( numlock, my_perl );
-		if (!found) {
-			tbb_interpreter_numbers.insert( numlock, my_perl );
-		}
+		tbb_interpreter_numbers.insert( numlock, my_perl );
 		(*numlock).second = 0;
 		IF_DEBUG_FREE("inserted %x => 0 (master) to tbb_interpreter_numbers");
 	}
