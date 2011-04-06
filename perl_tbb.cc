@@ -85,7 +85,7 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 		// anything to free?  If we're using a scalable
 		// allocator, this should also help to re-use memory
 		// we already had allocated.
-		perl_concurrent_item* gonner;
+		perl_concurrent_slot* gonner;
 		while (gonner = tbb_interpreter_freelist.next(my_perl)) {
 			SvREFCNT_dec(gonner);
 		}
@@ -200,10 +200,9 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 	raw_thread_id thread_id = get_raw_thread_id();
 	tbb_interpreter_pool.grab( interp, this->context );
 
-	SV *isv, *inv, *range;
-	perl_for_int_array_func body_copy = *this;
+	SV *isv, *range, *array_sv;
 	perl_tbb_blocked_int r_copy = r;
-	IF_DEBUG_LEAK("my for_int_array_func: %x", &body_copy);
+	perl_concurrent_vector* array = xarray;
 	IF_DEBUG_LEAK("my perl_tbb_blocked_int: %x", &r);
 
 	// this declares and loads 'my_perl' variables from TLS
@@ -220,12 +219,14 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 	PUSHMARK(SP);
 
 	isv = newSV(0);
-	inv = sv_setref_pv(isv, "threads::tbb::for_int_array_func", &body_copy );
-	XPUSHs(inv);
-
-	isv = newSV(0);
 	range = sv_setref_pv(isv, "threads::tbb::blocked_int", &r_copy );
 	XPUSHs(range);
+
+	isv = newSV(0);
+	array_sv = sv_setref_pv(isv, "threads::tbb::concurrent::array", array );
+	array->refcnt++;
+	sv_2mortal(array_sv);
+	XPUSHs(array_sv);
 
 	//   // set the global stack pointer to the same as our local copy
 	PUTBACK;
@@ -245,8 +246,6 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 	}
 	IF_DEBUG_PERLCALL( "($@ ok)" );
 
-	sv_setiv(SvRV(inv), 0);
-	SvREFCNT_dec(inv);
 	sv_setiv(SvRV(range), 0);
 	SvREFCNT_dec(range);
 	//   // free up those temps & PV return value
@@ -263,9 +262,9 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 SV* perl_for_int_method::get_invocant( pTHX_ int worker ) {
 	IF_DEBUG_PERLCALL( "getting invocant for worker %d", worker );
 	copied->grow_to_at_least(worker+1);
-	perl_concurrent_item x = (*copied)[worker];
+	perl_concurrent_slot x = (*copied)[worker];
 	if (!x.thingy || (x.owner != my_perl)) {
-		x = perl_concurrent_item( my_perl, invocant.clone( my_perl ) );
+		x = perl_concurrent_slot( my_perl, invocant.clone( my_perl ) );
 	}
 	return x.dup( my_perl );
 }
@@ -348,7 +347,7 @@ void perl_for_int_method::operator()( const perl_tbb_blocked_int& r ) const {
 };
 
 // freeing old (values of) slots.
-void perl_interpreter_freelist::free( const perl_concurrent_item item ) {
+void perl_interpreter_freelist::free( const perl_concurrent_slot item ) {
 	ptr_to_worker::const_accessor lock;
 	bool found = tbb_interpreter_numbers.find( lock, item.owner );
 	int worker = (*lock).second;
@@ -359,16 +358,16 @@ void perl_interpreter_freelist::free( const perl_concurrent_item item ) {
 }
 
 void perl_interpreter_freelist::free( PerlInterpreter* owner, SV* item ) {
-	this->free( perl_concurrent_item( owner, item ) );
+	this->free( perl_concurrent_slot( owner, item ) );
 }
 
-perl_concurrent_item* perl_interpreter_freelist::next( pTHX ) {
+perl_concurrent_slot* perl_interpreter_freelist::next( pTHX ) {
 	ptr_to_worker::const_accessor lock;
 	bool found = tbb_interpreter_numbers.find( lock, my_perl );
 	int worker = (*lock).second;
 	lock.release();
 
-	perl_concurrent_item* x = new perl_concurrent_item();
+	perl_concurrent_slot* x = new perl_concurrent_slot();
 	if ((*this)[worker].try_pop(*x)) {
 		IF_DEBUG_FREE("next to free: %x", x->thingy);
 		return x;

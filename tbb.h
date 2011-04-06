@@ -96,22 +96,31 @@ perl_tbb_blocked_int( perl_tbb_blocked_int& oth, tbb::split sp )
 };
 
 // threads::tbb::concurrent::array
-class perl_concurrent_item;
-class perl_concurrent_vector : public tbb::concurrent_vector<perl_concurrent_item> {
+class perl_concurrent_slot;
+class perl_concurrent_vector : public tbb::concurrent_vector<perl_concurrent_slot> {
 public:
 	int refcnt;
 	perl_concurrent_vector() : refcnt(0) {}
 };
 
-class perl_concurrent_item {
+class perl_concurrent_slot {
 public:
 	SV* thingy;
 	PerlInterpreter* owner;
-        perl_concurrent_item( ) : thingy(0) {};
-	perl_concurrent_item( PerlInterpreter* owner, SV* thingy )
+        perl_concurrent_slot( ) : thingy(0) {};
+	perl_concurrent_slot( PerlInterpreter* owner, SV* thingy )
 		: thingy(thingy), owner(owner) {};
 	SV* dup( pTHX );    // get if same interpreter, clone otherwise
 	SV* clone( pTHX );  // always clone
+};
+
+// same as perl_concurrent_slot, but with refcounting
+class perl_concurrent_item : public perl_concurrent_slot {
+public:
+	int refcnt;
+	perl_concurrent_item( ) : refcnt(0), perl_concurrent_slot() {};
+	perl_concurrent_item( PerlInterpreter* owner, SV* thingy )
+		: refcnt(0), perl_concurrent_slot(owner, thingy) {};
 };
 
 // threads::tbb::init
@@ -149,9 +158,7 @@ class perl_for_int_array_func {
 	perl_tbb_init* context;
 	perl_concurrent_vector* xarray;
 public:
-	int refcnt;
         perl_for_int_array_func( perl_tbb_init* context, perl_concurrent_vector* xarray, std::string funcname ) :
-	refcnt(0),
 	funcname(funcname), context(context), xarray(xarray) { };
 	perl_concurrent_vector* get_array() { return xarray; };
 	void operator()( const perl_tbb_blocked_int& r ) const;
@@ -161,7 +168,7 @@ public:
 // this one allows a SV to be passed
 class perl_for_int_method {
 	perl_tbb_init* context;
-	perl_concurrent_item invocant;
+	perl_concurrent_slot invocant;
         perl_concurrent_vector* copied;
 public:
 	std::string methodname;
@@ -171,7 +178,7 @@ perl_for_int_method( pTHX_ perl_tbb_init* context, SV* inv_sv, std::string metho
 		SV* newsv = newSV(0);
 		SvSetSV_nosteal(newsv, inv_sv);
 		IF_DEBUG_PERLCALL("copied %x to %x (refcnt = %d)", inv_sv, newsv, SvREFCNT(newsv));
-		invocant = perl_concurrent_item(my_perl, newsv); 
+		invocant = perl_concurrent_slot(my_perl, newsv); 
 	};
 	SV* get_invocant( pTHX_ int worker );
 	void operator()( const perl_tbb_blocked_int& r ) const;
@@ -263,11 +270,11 @@ static ptr_to_worker tbb_interpreter_numbers = ptr_to_worker();
 
 // freelist; next time interpreter wakes, it will free the items in this
 // list.
-class perl_interpreter_freelist : public tbb::concurrent_vector<tbb::strict_ppl::concurrent_queue<perl_concurrent_item> > {
+class perl_interpreter_freelist : public tbb::concurrent_vector<tbb::strict_ppl::concurrent_queue<perl_concurrent_slot> > {
 public:
 	void free( PerlInterpreter* owner, SV *sv );
-	void free( const perl_concurrent_item item );
-	perl_concurrent_item* next( pTHX );
+	void free( const perl_concurrent_slot item );
+	perl_concurrent_slot* next( pTHX );
 };
 
 // the global pointer to the interpreter locks

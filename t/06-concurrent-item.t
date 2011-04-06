@@ -5,6 +5,7 @@ use strict;
 
 BEGIN { use_ok("threads::tbb") }
 
+{
 my $scalar_tie_obj = threads::tbb::concurrent::item->new;
 
 isa_ok($scalar_tie_obj, "threads::tbb::concurrent::item", "new perl_concurrent_item");
@@ -15,7 +16,9 @@ is($scalar_tie_obj->FETCH, 1, "stores and retrieves from same thread");
 $scalar_tie_obj->STORE("foo");
 my $back = $scalar_tie_obj->FETCH;
 is($back, "foo", "STORE/FETCH");
+}
 
+{
 tie my $scalar, "threads::tbb::concurrent::item";
 
 isa_ok(tied($scalar), "threads::tbb::concurrent::item", "tied(\$scalar)");
@@ -34,4 +37,5 @@ $scalar = $orig;
 my $copy = $scalar;
 
 is_deeply($copy, $orig, "blessed structures in and out");
+}
 

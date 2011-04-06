@@ -118,8 +118,8 @@ new( classname )
 	perl_concurrent_item* self;
   CODE:
 	self = new perl_concurrent_item( my_perl, &PL_sv_undef );
-        RETVAL = sv_newmortal();
-	SvREFCNT_inc(RETVAL);
+	self->refcnt++;
+        RETVAL = newSV(0);
         sv_setref_pv( RETVAL, classname, (void*)self );
   OUTPUT:
 	RETVAL
@@ -131,6 +131,7 @@ TIESCALAR(classname)
         perl_concurrent_item* rv;
   CODE:
 	rv = new perl_concurrent_item( my_perl, &PL_sv_undef );
+	rv->refcnt++;
         ST(0) = sv_newmortal();
         sv_setref_pv( ST(0), classname, (void*)rv );
 
@@ -158,12 +159,32 @@ STORE(self, value)
 	(*self) = perl_concurrent_item( my_perl, value );
 
 
+int
+perl_concurrent_item::CLONE_REFCNT_inc()
+CODE:
+	THIS->refcnt++;
+	IF_DEBUG_LEAK("perl_concurrent_item::CLONE_REFCNT_inc; %x => %d", THIS, THIS->refcnt);
+	RETVAL = 42;
+OUTPUT:
+	RETVAL
+
 void
 perl_concurrent_item::DESTROY()
 CODE:
-	IF_DEBUG_LEAK("perl_concurrent_item::DESTROY; %x", THIS);
-	if (THIS != NULL)
-		delete THIS;
+	if (THIS != NULL) {
+		if (--THIS->refcnt > 0) {
+			IF_DEBUG_LEAK("perl_concurrent_item::DESTROY; %x => refcnt=%d", THIS, THIS->refcnt);
+		}
+		else {
+			IF_DEBUG_LEAK("perl_concurrent_item::DESTROY; delete %x", THIS);
+			delete THIS;
+			// XXX - temporary workaround
+			sv_setiv(SvRV(ST(0)), 0);
+		}
+	}
+	else {
+		IF_DEBUG_LEAK("perl_concurrent_item::DESTROY; %x ?", THIS);
+	}
 
 MODULE = threads::tbb::concurrent::array    PACKAGE = threads::tbb::concurrent::array
 
@@ -180,7 +201,7 @@ perl_concurrent_vector::FETCH(i)
 	int i;
   PREINIT:
 	SV* mysv;
-	perl_concurrent_item* slot;
+	perl_concurrent_slot* slot;
   CODE:
 	if (THIS->size() < i+1) {
 		IF_DEBUG_VECTOR("FETCH(%d): not extended to [%d]", i, i+1);
@@ -210,7 +231,7 @@ perl_concurrent_vector::STORE(i, v)
 	IF_DEBUG_VECTOR("STORE (%d, %x) (refcnt = %d)", i, v, SvREFCNT(v));
 	IF_DEBUG_VECTOR("%x->grow_to_at_least(%d)", THIS, i+1);
 	THIS->grow_to_at_least( i+1 );
-	perl_concurrent_item* slot = &((*THIS)[i]);
+	perl_concurrent_slot* slot = &((*THIS)[i]);
 	SV* o = slot->thingy;
 	if (o) {
 		IF_DEBUG_VECTOR("old = %x", o);
@@ -259,7 +280,7 @@ perl_concurrent_vector::PUSH(...)
 	if (items == 2) {
 		x = newSV(0);
 		SvSetSV_nosteal(x, ST(1));
-		THIS->push_back( perl_concurrent_item(my_perl, x) );
+		THIS->push_back( perl_concurrent_slot(my_perl, x) );
 		IF_DEBUG_VECTOR("PUSH (%x)", x);
 	}
         else {
@@ -297,6 +318,16 @@ CODE:
 			sv_setiv(SvRV(ST(0)), 0);
 		}
 	}
+
+int
+perl_concurrent_vector::CLONE_REFCNT_inc()
+  CODE:
+	THIS->refcnt++;
+	IF_DEBUG_LEAK("perl_concurrent_item::CLONE_REFCNT_inc; %x => %d", THIS, THIS->refcnt);
+	RETVAL = 42;
+  OUTPUT:
+	RETVAL
+
 
 MODULE = threads::tbb::for_int_array_func	PACKAGE = threads::tbb::for_int_array_func
 
