@@ -238,9 +238,9 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 SV* perl_for_int_method::get_invocant( pTHX_ int worker ) {
 	IF_DEBUG_PERLCALL( "getting invocant for worker %d", worker );
 	copied->grow_to_at_least(worker+1);
-	perl_concurrent_item x = (*copied)[worker];
+	perl_concurrent_slot x = (*copied)[worker];
 	if (!x.thingy || (x.owner != my_perl)) {
-		x = perl_concurrent_item( my_perl, invocant.clone( my_perl ) );
+		x = perl_concurrent_slot( my_perl, invocant.clone( my_perl ) );
 	}
 	return x.dup( my_perl );
 }
