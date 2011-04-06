@@ -9,11 +9,10 @@ BEGIN { if (DEBUG) { require Devel::Peek; Devel::Peek->import; } }
 
 
 sub doTest {
-	my $body = shift;
 	my $range = shift;
+	my $array = shift;
 	my $unwrap = shift;
 	my $wrap = shift;
-	my $array = $body->get_array;
 
 	print STDERR "Processing [".$range->begin.",".$range->end."), worker = ".($threads::tbb::worker ? "YES" : "NO")."\n" if DEBUG;
 	$|=1;

@@ -175,10 +175,9 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 	raw_thread_id thread_id = get_raw_thread_id();
 	tbb_interpreter_pool.grab( interp, this->context );
 
-	SV *isv, *inv, *range;
-	perl_for_int_array_func body_copy = *this;
+	SV *isv, *range, *array_sv;
 	perl_tbb_blocked_int r_copy = r;
-	IF_DEBUG_LEAK("my for_int_array_func: %x", &body_copy);
+	perl_concurrent_vector* array = xarray;
 	IF_DEBUG_LEAK("my perl_tbb_blocked_int: %x", &r);
 
 	// this declares and loads 'my_perl' variables from TLS
@@ -195,12 +194,14 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 	PUSHMARK(SP);
 
 	isv = newSV(0);
-	inv = sv_setref_pv(isv, "threads::tbb::for_int_array_func", &body_copy );
-	XPUSHs(inv);
-
-	isv = newSV(0);
 	range = sv_setref_pv(isv, "threads::tbb::blocked_int", &r_copy );
 	XPUSHs(range);
+
+	isv = newSV(0);
+	array_sv = sv_setref_pv(isv, "threads::tbb::concurrent::array", array );
+	array->refcnt++;
+	sv_2mortal(array_sv);
+	XPUSHs(array_sv);
 
 	//   // set the global stack pointer to the same as our local copy
 	PUTBACK;
@@ -220,8 +221,6 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 	}
 	IF_DEBUG_PERLCALL( "($@ ok)" );
 
-	sv_setiv(SvRV(inv), 0);
-	SvREFCNT_dec(inv);
 	sv_setiv(SvRV(range), 0);
 	SvREFCNT_dec(range);
 	//   // free up those temps & PV return value
