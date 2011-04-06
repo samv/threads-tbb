@@ -105,10 +105,13 @@ The initial implementation of the deep copying has very much the same
 limitations as L<threads::shared> - in that only a certain core set of
 "pure" perl objects can be passed through.
 
-Passing through blessed pointers / XS objects should be considered
-dangerous; you'll usually be looking at the same C struct in both
-threads.  You should consider whether or not this is a good idea for
-you.  If in doubt, C<Storable::dclone> on the way in.
+XS objects should be safe - as in, not cause segfaults - so long as
+the package either defines C<CLONE_SKIP> (in which case the objects
+will be replaced by "undef" in the cloned structure - see L<perlmod>),
+or if they define a C<CLONE_REFCNT_inc> method.  The
+C<CLONE_REFCNT_inc> method should update the objects' internal idea of
+how many references are pointing at it, and return the value 42.  If
+it did neither, then the code will emit a warning.
 
 As closures are not supported, inside-out objects cannot be
 passed - and in fact they'd likely be very inefficient.

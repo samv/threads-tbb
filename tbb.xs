@@ -151,6 +151,15 @@ STORE(self, value)
   /* FIXME this leaks :( */
     (*self) = perl_concurrent_item( my_perl, value );
 
+int
+perl_concurrent_item::CLONE_REFCNT_inc()
+CODE:
+	THIS->refcnt++;
+	IF_DEBUG_LEAK("perl_concurrent_item::CLONE_REFCNT_inc; %x => %d", THIS, THIS->refcnt);
+	RETVAL = 42;
+OUTPUT:
+	RETVAL
+
 void
 perl_concurrent_item::DESTROY()
 CODE:
@@ -304,6 +313,16 @@ CODE:
 			sv_setiv(SvRV(ST(0)), 0);
 		}
 	}
+
+int
+perl_concurrent_vector::CLONE_REFCNT_inc()
+  CODE:
+	THIS->refcnt++;
+	IF_DEBUG_LEAK("perl_concurrent_item::CLONE_REFCNT_inc; %x => %d", THIS, THIS->refcnt);
+	RETVAL = 42;
+  OUTPUT:
+	RETVAL
+
 
 MODULE = threads::tbb::for_int_array_func	PACKAGE = threads::tbb::for_int_array_func
 

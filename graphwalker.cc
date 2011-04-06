@@ -183,6 +183,30 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 					}
 					sv_bless( (*item).second.tsv, (HV*) (*target).second.tsv );
 					IF_DEBUG_CLONE("    blessed be! => %s", HvNAME_get(pkg));
+					if (SvTYPE(SvRV(it)) == SVt_PVMG) {
+						// XS object, it better know how to refcount.
+						GV* const rc_inc = gv_fetchmethod_autoload(pkg, "CLONE_REFCNT_inc", 0);
+						UV status = -1;
+						if (rc_inc && GvCV(rc_inc)) {
+							IF_DEBUG_CLONE("     Calling CLONE_REFCNT_inc in %s", HvNAME_get(pkg));
+							dSP;
+							ENTER;
+							SAVETMPS;
+							PUSHMARK(SP);
+							XPUSHs( (*item).second.tsv );
+							PUTBACK;
+							call_sv(MUTABLE_SV(GvCV(rc_inc)), G_SCALAR);
+							SPAGAIN;
+							status = POPu;
+							IF_DEBUG_CLONE("     CLONE_REFCNT_inc returned %d", status);
+							PUTBACK;
+							FREETMPS;
+							LEAVE;
+						}
+						if (status != 42) {
+							warn("Leaking memory because XS class %s didn't define CLONE_SKIP nor CLONE_REFCNT_inc", HvNAME_get(pkg));
+						}
+					}
 				}
 				done[it].built = true;
 			}
