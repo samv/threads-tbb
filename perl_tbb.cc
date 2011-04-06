@@ -40,7 +40,7 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 		// start an interpreter!  fixme: load some code :)
 		my_perl = perl_alloc();
 #ifdef DEBUG_PERLCALL
-		IF_DEBUG(fprintf(stderr, "thr %x: allocated an interpreter for worker %d\n", thread_id, lock->second));
+		IF_DEBUG(fprintf(stderr, "thr %x: allocated an interpreter (%x) for worker %d\n", thread_id, my_perl, lock->second));
 #endif
 
 		{
@@ -50,6 +50,10 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 				tbb_interpreter_numbers.insert( numlock, my_perl );
 			}
 			(*numlock).second = lock->second;
+#ifdef DEBUG_FREE
+			IF_DEBUG(fprintf(stderr, "thr %x: inserted %x => %d (worker) to tbb_interpreter_numbers\n", thread_id, my_perl, lock->second));
+#endif
+			numlock.release();
 		}
 
 		// probably unnecessary
@@ -121,12 +125,15 @@ void perl_tbb_init::mark_master_thread_ok() {
 		lock->second = 0;
 
 		PerlInterpreter* my_perl = PERL_GET_THX;
+		SV* worker_sv = get_sv("threads::tbb::worker", GV_ADD|GV_ADDMULTI);
+		sv_setiv(worker_sv, 0);
 		ptr_to_worker::accessor numlock;
 		bool found = tbb_interpreter_numbers.find( numlock, my_perl );
 		if (!found) {
 			tbb_interpreter_numbers.insert( numlock, my_perl );
 		}
 		(*numlock).second = 0;
+		IF_DEBUG_FREE("inserted %x => 0 (master) to tbb_interpreter_numbers");
 	}
 }
 
@@ -352,11 +359,15 @@ void perl_for_int_method::operator()( const perl_tbb_blocked_int& r ) const {
 void perl_interpreter_freelist::free( const perl_concurrent_slot item ) {
 	ptr_to_worker::const_accessor lock;
 	bool found = tbb_interpreter_numbers.find( lock, item.owner );
+	if (!found) {
+		IF_DEBUG_FREE("What?  No entry in tbb_interpreter_numbers for %x?", item.owner);
+		return;
+	}
 	int worker = (*lock).second;
 	lock.release();
 	this->grow_to_at_least(worker+1);
 
-	IF_DEBUG_FREE("queueing to worker %d: %x", worker, item->thingy);
+	IF_DEBUG_FREE("queueing to worker %d: %x", worker, item.thingy);
 	(*this)[worker].push(item);
 }
 
@@ -367,7 +378,17 @@ void perl_interpreter_freelist::free( PerlInterpreter* owner, SV* item ) {
 perl_concurrent_slot* perl_interpreter_freelist::next( pTHX ) {
 	ptr_to_worker::const_accessor lock;
 	bool found = tbb_interpreter_numbers.find( lock, my_perl );
-	int worker = (*lock).second;
+	int worker = 0;
+	if (!found) {
+		IF_DEBUG_FREE("What?  No entry in tbb_interpreter_numbers?");
+		SV* tbb_worker = get_sv("threads::tbb::worker", 0);
+		if (tbb_worker)
+			worker = SvIV(tbb_worker);
+		IF_DEBUG_FREE("Fetched worker num = %d from Perl", worker);
+	}
+	else {
+		worker = (*lock).second;
+	}
 	lock.release();
 	this->grow_to_at_least(worker+1);
 
