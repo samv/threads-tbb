@@ -112,6 +112,8 @@ sub parallel_for {
 	$body->parallel_for($range);
 }
 
+sub threads::tbb::init::CLONE_SKIP { 1 }
+
 BEGIN {
 	no strict 'refs';
 	for my $body ( qw( for_int_array_func for_int_method ) ) {
@@ -124,6 +126,8 @@ BEGIN {
 			}
 			return $bfunc;
 		};
+		# body functions are not refcounted, don't clone them.
+		*{"${class}::CLONE_SKIP"} = sub{1};
 	}
 }
 

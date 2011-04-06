@@ -97,9 +97,10 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				if (target == done.end()) {
 					const char * pkgname = HvNAME_get(pkg);
 					IF_DEBUG_CLONE("     Ok, %s, that's new", pkgname);
+					HV* lpkg = gv_stashpv(pkgname, GV_ADD);
 					// not found ... before we map to a local package, call the CLONE_SKIP function to see if we should map this type.
 					const HEK * const hvname = HvNAME_HEK(pkg);
-					GV* const cloner = gv_fetchmethod_autoload(MUTABLE_HV(sv), "CLONE_SKIP", 0);
+					GV* const cloner = gv_fetchmethod_autoload(lpkg, "CLONE_SKIP", 0);
 					UV status = 0;
 					if (cloner && GvCV(cloner)) {
 						IF_DEBUG_CLONE("     Calling CLONE_SKIP in %s", pkgname);
@@ -123,11 +124,11 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 					if (status) {
 						IF_DEBUG_CLONE("     marking package (%x) as undef", pkg);
 						done[(SV*)pkg] = graph_walker_slot(&PL_sv_undef, true);
-						IF_DEBUG_CLONE("     CLONE SKIP set: mapping SV to undef");
+						IF_DEBUG_CLONE("     CLONE SKIP set: mapping SV %x to undef", it);
 						done[it] = graph_walker_slot(&PL_sv_undef, true);
+						continue;
 					}
 					else {
-						HV* lpkg = gv_stashpv(pkgname, GV_ADD);
 						done[(SV*)pkg] = graph_walker_slot((SV*)lpkg, true);
 						IF_DEBUG_CLONE("     adding package (%x) to done hash (%x)", pkg, lpkg);
 					}
@@ -251,14 +252,14 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				// side-effect free hash iteration :)
 				num = HvMAX(it);
 				contents = HvARRAY(it);
-				IF_DEBUG_CLONE("   walking over %d slots at contents @%x", num+1, contents);
-				IF_DEBUG_CLONE("   (PL_sv_placeholder = %x)", &PL_sv_placeholder);
+				//IF_DEBUG_CLONE("   walking over %d slots at contents @%x", num+1, contents);
+				//IF_DEBUG_CLONE("   (PL_sv_placeholder = %x)", &PL_sv_placeholder);
 				for (int i = 0; i <= num; i++ ) {
-					IF_DEBUG_CLONE("   contents[%d] = %x", i, contents[i]);
+				  //IF_DEBUG_CLONE("   contents[%d] = %x", i, contents[i]);
 					if (!contents[i])
 						continue;
 					SV* val = HeVAL(contents[i]);
-					IF_DEBUG_CLONE("   val = %x", val);
+					IF_DEBUG_CLONE("   {%s} = %x", HePV(contents[i], len), val);
 					// thankfully, PL_sv_placeholder is a superglobal.
 					if (val == &PL_sv_placeholder)
 						continue;

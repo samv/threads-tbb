@@ -95,6 +95,7 @@ sub TestN {
 	);
 }
 
+#goto test_this;
 make_test sub { "$_[0]" }, sub { 0+$_[0] }, "Test PV";
 use Storable qw(freeze thaw);
 make_test sub { freeze { foo => 1.0*$_[0] } }, sub { (thaw $_[0])->{foo} }, "Test Storable";
@@ -155,5 +156,28 @@ make_test
 	      push @a, $_[0];
 	      bless [ tied(@a), \@a ], "TiedArray" },
 	sub { $_[0]->val }, "Test Tied Array";
+
+
+sub SkippedPVMG::val {
+	my $self = shift;
+	if ( !$threads::tbb::worker or !defined($self->{foo}) ) {
+		return $self->{good};
+	}
+	else {
+		return -3;
+	}
+}
+#test_this:
+make_test
+	sub {
+		if ( $threads::tbb::worker ) {
+			return bless { good => $_[0] }, "SkippedPVMG";
+		}
+		else {
+			our $tbb ||= threads::tbb->new;
+			return bless { (foo => $tbb->{init}), good => $_[0] }, "SkippedPVMG";
+		}
+	},
+	sub { $_[0]->val }, "Test Skipped PVMG";
 
 1;
