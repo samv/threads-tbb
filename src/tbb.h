@@ -41,14 +41,7 @@ perl_tbb_blocked_int( perl_tbb_blocked_int& oth, tbb::split sp )
 	{ };
 };
 
-// threads::tbb::concurrent::array
-class perl_concurrent_slot;
-class perl_concurrent_vector : public tbb::concurrent_vector<perl_concurrent_slot> {
-public:
-	int refcnt;
-	perl_concurrent_vector() : refcnt(0) {}
-};
-
+// a slot in a cross-thread item
 class perl_concurrent_slot {
 public:
 	SV* thingy;
@@ -56,11 +49,12 @@ public:
         perl_concurrent_slot( ) : thingy(0) {};
 	perl_concurrent_slot( PerlInterpreter* owner, SV* thingy )
 		: thingy(thingy), owner(owner) {};
-	SV* dup( pTHX );    // get if same interpreter, clone otherwise
+	SV* dup( pTHX ) const;    // get if same interpreter, clone otherwise
 	SV* clone( pTHX );  // always clone
 };
 
-// same as perl_concurrent_slot, but with refcounting
+// same as perl_concurrent_slot, but with refcounting (so it can be
+// passed between threads) - a "boxed" slot
 class perl_concurrent_item : public perl_concurrent_slot {
 public:
 	int refcnt;
@@ -68,6 +62,34 @@ public:
 	perl_concurrent_item( PerlInterpreter* owner, SV* thingy )
 		: refcnt(0), perl_concurrent_slot(owner, thingy) {};
 };
+
+// threads::tbb::concurrent::array
+class perl_concurrent_vector : public tbb::concurrent_vector<perl_concurrent_slot> {
+public:
+	int refcnt;
+	perl_concurrent_vector() : refcnt(0) {}
+};
+
+struct hek_compare_funcs {
+	static size_t hash( const HEK& hek ) {
+		return hek.hek_hash;
+	}
+	static bool equal( const HEK& a, const HEK& b ) {
+		return ( (a.hek_len == b.hek_len) ||
+			 strcmp(a.hek_key, b.hek_key) );
+	}
+};
+
+// threads::tbb::concurrent::hash - map from the Perl Hash Key to a
+// lazy slot
+class perl_concurrent_hash : public tbb::concurrent_hash_map<HEK, perl_concurrent_slot, hek_compare_funcs> {
+public:
+	int refcnt;
+	perl_concurrent_hash() : refcnt(0) {}
+};
+
+typedef perl_concurrent_hash::const_accessor perl_concurrent_hash_reader;
+typedef perl_concurrent_hash::accessor perl_concurrent_hash_writer;
 
 // threads::tbb::init
 static int perl_tbb_init_seq = 0;

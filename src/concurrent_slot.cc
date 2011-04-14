@@ -9,7 +9,7 @@ extern "C" {
 
 #include "tbb.h"
 
-SV* perl_concurrent_slot::dup( pTHX ) {
+SV* perl_concurrent_slot::dup( pTHX ) const {
 	SV* rsv;
 	if (this->owner == my_perl) {
 		rsv = newSV(0);

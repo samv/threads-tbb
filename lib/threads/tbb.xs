@@ -38,5 +38,6 @@ BOOT:
     CALL_BOOT (boot_threads__tbb__blocked_int);
     CALL_BOOT (boot_threads__tbb__concurrent__array);
     CALL_BOOT (boot_threads__tbb__concurrent__item);
+    CALL_BOOT (boot_threads__tbb__concurrent__hash);
     CALL_BOOT (boot_threads__tbb__for_int_array_func);
     CALL_BOOT (boot_threads__tbb__for_int_method);
