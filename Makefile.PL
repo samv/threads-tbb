@@ -21,7 +21,7 @@ my (@clean, @OBJECT, @LD_FROM, %XS);
 
         $XS{$xs} = $c;
         push @OBJECT, $o;
-	$o =~ s{.*/}{};
+	#$o =~ s{.*/}{};
 	push @LD_FROM, $o;
         push @clean, $o;
     }
@@ -29,7 +29,7 @@ my (@clean, @OBJECT, @LD_FROM, %XS);
     for my $c (<src/*.cc>) {
         (my $o = $c) =~ s/\.cc$/\$(OBJ_EXT)/i;
         push @OBJECT, $o;
-	$o =~ s{.*/}{};
+	#$o =~ s{.*/}{};
 	push @LD_FROM, $o;
         push @clean, $o;
     }
@@ -53,9 +53,11 @@ WriteMakefile(
     TYPEMAPS          => ["$Bin/src/typemap.xsc"],
     CC                => $CC,
     LD                => '$(CC)',
+    CCFLAGS           => '-o $@',
     LDFROM => join (q{ }, @LD_FROM),
         clean  => { FILES => join(q{ }, @clean) },
         OBJECT => join (q{ }, @OBJECT),
         XS     => \%XS,
+    depend => { '$(OBJECT)' => join(" ", glob "src/*.h") },
 );
 

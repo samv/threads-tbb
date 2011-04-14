@@ -18,7 +18,7 @@ extern "C" {
  *   other interpreter is not changing the marshalled data.  In
  *   particular, hashes are not iterated using hv_iterinit etc; this
  *   code is quite tied to the particular Perl API, until there is a
- *   better C-level iterator API for hashes.
+ *   better C-level (const) iterator API for hashes.
  *
  * - implemented using a stack and map; but the approach is quite
  *   similar to the one used in shared_clone's private closure.
@@ -372,24 +372,3 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 	return rv;
 }
 
-SV* perl_concurrent_slot::dup( pTHX ) {
-	SV* rsv;
-	if (this->owner == my_perl) {
-		rsv = newSV(0);
-		SvSetSV_nosteal(rsv, this->thingy);
-		IF_DEBUG_CLONE("dup'd %x to %x (refcnt = %d)", this->thingy, rsv, SvREFCNT(rsv));
-	}
-	else {
-		IF_DEBUG_CLONE("CLONING %x (refcnt = %d)", this->thingy, SvREFCNT(this->thingy));
-		rsv = clone_other_sv( my_perl, this->thingy, this->owner );
-		SvREFCNT_inc(rsv);
-	}
-	return rsv;
-}
-
-SV* perl_concurrent_slot::clone( pTHX ) {
-	IF_DEBUG_CLONE("CLONING %x (refcnt = %d)", this->thingy, SvREFCNT(this->thingy));
-	SV* rsv = clone_other_sv( my_perl, this->thingy, this->owner );
-	SvREFCNT_inc(rsv);
-	return rsv;
-}
