@@ -251,14 +251,13 @@ C<$array_ref>.
 =item C<$tbb-E<gt>for_int_method( $object, "method" )>
 
 This will create a body object which calls the "method" method of
-C<$object> on sub-divided ranges; C<$object> will be cloned once for
-each worker, as:
+C<$object> on sub-divided ranges, as:
 
   $object->method( $range );
 
-You should refrain from modifying anything accessible from C<$self>
-within "method" without going through a L<threads::tbb::concurrent>
-container of some sort.
+C<$object> will be cloned once for each worker, so can be modified and
+the results expected to stay consistent within the lifetime of the
+parallel_for; the calling C<$object> will see none of them.
 
 =back
 
