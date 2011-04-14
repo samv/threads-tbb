@@ -8,6 +8,7 @@ extern "C" {
 }
 
 #include "tbb.h"
+#include "interpreter_pool.h"
 //static bool aTHX;
 
 // a parallel_for body class that works with blocked_int range type

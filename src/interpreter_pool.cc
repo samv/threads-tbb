@@ -9,6 +9,7 @@ void boot_DynaLoader(pTHX_ CV* cv);
 }
 
 #include "tbb.h"
+#include "interpreter_pool.h"
 
 static void xs_init(pTHX) {
 	dXSUB_SYS;
@@ -18,6 +19,10 @@ static void xs_init(pTHX) {
 static const char* argv[] = {"", "-e", "0"};
 static int argc = sizeof argv / sizeof *argv;
 perl_interpreter_pool tbb_interpreter_pool = perl_interpreter_pool();
+
+// threads::tbb::init
+static int perl_tbb_worker = 0;
+static mutex_t perl_tbb_worker_mutex;
 
 void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tbb_init* init ) {
 	raw_thread_id thread_id = get_raw_thread_id();

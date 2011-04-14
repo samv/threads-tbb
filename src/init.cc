@@ -7,6 +7,7 @@ extern "C" {
 }
 
 #include "tbb.h"
+#include "interpreter_pool.h"
 
 using namespace std;
 using namespace tbb;

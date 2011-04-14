@@ -8,6 +8,7 @@ extern "C" {
 }
 
 #include "tbb.h"
+#include "interpreter_pool.h"
 
 // this function might be made into a helper / base class at some point...
 SV* perl_for_int_method::get_invocant( pTHX_ int worker ) {
