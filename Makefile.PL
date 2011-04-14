@@ -16,7 +16,7 @@ my $CC = 'g++';
 my (@clean, @OBJECT, @LD_FROM, %XS);
 {
     my @xs;
-    find(sub { m{\.xs$} && push @xs, $File::Find::name }, "lib");
+    find(sub { !m{^\.} && m{\.xs$} && push @xs, $File::Find::name }, "lib");
     for my $xs (@xs) {
         (my $c = $xs) =~ s/\.xs$/.c/i;
         (my $o = $xs) =~ s/\.xs$/\$(OBJ_EXT)/i;
