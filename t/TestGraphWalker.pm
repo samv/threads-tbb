@@ -5,8 +5,18 @@ use Data::Dumper;
 
 use Time::HiRes qw(sleep);
 use constant DEBUG => 0;
-BEGIN { if (DEBUG) { require Devel::Peek; Devel::Peek->import; } }
-
+BEGIN { if (DEBUG&&(DEBUG>1)) { require Devel::Peek; Devel::Peek->import; } }
+# good class accessor in core?
+sub items {
+	shift if eval { $_[0]->isa(__PACKAGE__) };
+	our $items;
+	if ( @_ ) { $items = shift } else { $items }
+}
+sub chunk_size {
+	shift if eval { $_[0]->isa(__PACKAGE__) };
+	our $chunk_size;
+	if ( @_ ) { $chunk_size = shift } else { $chunk_size }
+}
 
 sub doTest {
 	my $range = shift;
@@ -14,20 +24,23 @@ sub doTest {
 	my $unwrap = shift;
 	my $wrap = shift;
 
-	print STDERR "Processing [".$range->begin.",".$range->end."), worker = ".($threads::tbb::worker ? "YES" : "NO")."\n" if DEBUG;
+	my $chunk_id = join("", "[",$range->begin,",",$range->end,")");
+	my $name = "worker $threads::tbb::worker : $chunk_id";
+	print STDERR "# $name: processing\n" if DEBUG;
 	$|=1;
 	for my $idx ( $range->begin .. $range->end-1 ) {
+		print STDERR "# $name: fetching item $idx\n" if DEBUG;
 		my $fetch_item = $array->FETCH($idx);
-		print STDERR "Fetched item $idx:\n" if DEBUG;
-		Dump($fetch_item) if DEBUG;
+		Dump($fetch_item) if DEBUG&&DEBUG>1;
 		my $num = $unwrap->($array->FETCH($idx));
+		print STDERR "# $name: array[ $idx ] unwraps to $num\n" if DEBUG;
 		my $store_item = $wrap->( $num/3 );
-		print STDERR "Storing item $idx:\n" if DEBUG;
-		Dump($store_item) if DEBUG;
+		print STDERR "# $name: storing item $idx:\n" if DEBUG;
+		Dump($store_item) if DEBUG&&DEBUG>1;
 		$array->STORE($idx, $store_item);
 	}
 	sleep rand(0.2);
-	print STDERR "Done processing [".$range->begin.",".$range->end."), worker = ".($threads::tbb::worker ? "YES" : "NO")."\n" if DEBUG;
+	print STDERR "# $name: finished chunk\n" if DEBUG;
 }
 
 our $test_num = 1;
@@ -59,11 +72,11 @@ sub TestN {
 	push @vector, map {
 		print STDERR "Storing item ".($_-1).":\n" if DEBUG;
 		my $item = $Wrap->($_);
-		Dump $item if DEBUG;
+		Dump $item if DEBUG && DEBUG > 1;
 		$item;
-	} 1..4;
+	} 1..items;
 
-	my $range = threads::tbb::blocked_int->new(0, $#vector+1, 1);
+	my $range = threads::tbb::blocked_int->new(0, $#vector+1, chunk_size);
 	my $body = $tbb->for_int_array_func(
 		tied(@vector), __PACKAGE__."::Test${n}Func",
 	);
@@ -95,7 +108,6 @@ sub TestN {
 	);
 }
 
-#goto test_this;
 make_test sub { "$_[0]" }, sub { 0+$_[0] }, "Test PV";
 use Storable qw(freeze thaw);
 make_test sub { freeze { foo => 1.0*$_[0] } }, sub { (thaw $_[0])->{foo} }, "Test Storable";
@@ -104,7 +116,7 @@ make_test sub { my $x = 1.0*$_[0]; $x }, sub { 1.0*$_[0] }, "Test NV";
 make_test sub { \$_[0] }, sub { ${$_[0]} }, "Test REF SCALAR";
 
 make_test sub { [ foo => 1.0*$_[0] ] }, sub { $_[0]->[1] }, "Test AV";
-make_test sub { +{ foo => 1.0*$_[0] } }, sub { $_[0]->{foo} }, "Test HV";
+make_test sub { our $n; +{ foo => 1.0*$_[0], t=>$threads::tbb::worker,n=>++$n } }, sub { $_[0]->{foo} }, "Test HV";
 
 # sub FooSV::val {
 # 	my $self = shift;
@@ -167,7 +179,6 @@ sub SkippedPVMG::val {
 		return -3;
 	}
 }
-#test_this:
 make_test
 	sub {
 		if ( $threads::tbb::worker ) {
