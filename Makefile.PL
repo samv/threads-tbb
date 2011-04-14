@@ -4,6 +4,7 @@ use warnings;
 use ExtUtils::MakeMaker;
 use Config;
 use FindBin qw($Bin);
+use File::Find;
 
 if (not $Config{useithreads} or $Config{use5005threads} ) {
 	print STDERR "Can't use threads::lite without threading support";
@@ -14,7 +15,9 @@ my $CC = 'g++';
 
 my (@clean, @OBJECT, @LD_FROM, %XS);
 {
-    for my $xs (<lib/threads/*.xs>) {
+    my @xs;
+    find(sub { m{\.xs$} && push @xs, $File::Find::name }, "lib");
+    for my $xs (@xs) {
         (my $c = $xs) =~ s/\.xs$/.c/i;
         (my $o = $xs) =~ s/\.xs$/\$(OBJ_EXT)/i;
 	#$o =~ s{.*/}{};
