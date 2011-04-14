@@ -15,6 +15,8 @@ call_func (pTHX_ void (*subaddr) (pTHX_ CV *), CV *cv, SV **mark)
     PUTBACK;
 }
 
+// yes, this macro should use XS() - but that inserts an unnecessary
+// extern "C"
 #define CALL_BOOT(name) \
     { \
         void name(register PerlInterpreter* my_perl , CV* cv);\
