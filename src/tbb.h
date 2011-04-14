@@ -50,7 +50,7 @@ public:
 	perl_concurrent_slot( PerlInterpreter* owner, SV* thingy )
 		: thingy(thingy), owner(owner) {};
 	SV* dup( pTHX ) const;    // get if same interpreter, clone otherwise
-	SV* clone( pTHX );  // always clone
+	SV* clone( pTHX ) const;  // always clone
 };
 
 // same as perl_concurrent_slot, but with refcounting (so it can be
