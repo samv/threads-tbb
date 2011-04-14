@@ -36,18 +36,18 @@ public:
 		: tsv(tsv), built(built) { };
 };
 
-SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl) {
+SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter* other_perl) {
 
-	std::list<SV*> todo;
-	std::map<SV*, graph_walker_slot> done;
-	std::map<SV*, graph_walker_slot>::iterator item, target;
+	std::list<const SV*> todo;
+	std::map<const SV*, graph_walker_slot> done;
+	std::map<const SV*, graph_walker_slot>::iterator item, target;
 
 	todo.push_back(sv);
 
 	// undef is a second-class global.  map it.
 	done[&other_perl->Isv_undef] = graph_walker_slot( &PL_sv_undef, true );
 
-	SV* it;
+	const SV* it;
 	MAGIC* mg;
 	while (todo.size()) {
 		it = todo.back();
@@ -333,31 +333,38 @@ SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl
 				croak("cannot put GLOB reference in a concurrent container");
 				break;
 			case SVt_IV:
-				IF_DEBUG_CLONE("     => IV (%d)", SvIV(it));
-				done[it] = graph_walker_slot(newSViv(SvIV(it)), true);
+			force_iv:
+				IF_DEBUG_CLONE("     => IV (%d)", SvIVX(it));
+				done[it] = graph_walker_slot(newSViv(SvIVX(it)), true);
 				break;
 			case SVt_NV:
-				IF_DEBUG_CLONE("     => NV (%g)", SvNV(it));
-				done[it] = graph_walker_slot(newSVnv(SvNV(it)), true);
+			force_nv:
+				IF_DEBUG_CLONE("     => NV (%g)", SvNVX(it));
+				done[it] = graph_walker_slot(newSVnv(SvNVX(it)), true);
 				break;
 			case SVt_PVNV:	
-				IF_DEBUG_CLONE("     => PVNV (%s, %g)", SvPV_nolen(it), SvNV(it));
+				IF_DEBUG_CLONE("     => PVNV (%s, %g)", SvPVX(it), SvNVX(it));
+				if (!SvPVX(it))
+					goto force_nv;
 				goto xx;
 			case SVt_PVIV:
-				IF_DEBUG_CLONE("     => PVIV (%s, %d)", SvPV_nolen(it), SvIV(it));
+				IF_DEBUG_CLONE("     => PVIV (%s, %d)", SvPVX(it), SvIVX(it));
+				if (!SvPVX(it))
+					goto force_iv;
 				goto xx;
 		
 			case SVt_PV:
-				IF_DEBUG_CLONE("     => PV (%s)", SvPV_nolen(it));
+				IF_DEBUG_CLONE("     => PV (%s)", SvPVX(it));
 			xx:
 				STRLEN len;
-				str = SvPV(it, len);
+				str = SvPVX(it);
+				len = SvCUR(it);
 				done[it] = graph_walker_slot(newSVpv( str, len ), true);
 				break;
 			case SVt_PVMG:
-				IF_DEBUG_CLONE("     => PVMG (%x)", SvIV(it));
-				IF_DEBUG_LEAK("new PVMG: %x", SvIV(it));
-				done[it] = graph_walker_slot(newSViv(SvIV(it)), true);
+				IF_DEBUG_CLONE("     => PVMG (%x)", SvIVX(it));
+				IF_DEBUG_LEAK("new PVMG: %x", SvIVX(it));
+				done[it] = graph_walker_slot(newSViv(SvIVX(it)), true);
 				break;
 			default:
 				croak("unknown SV type %d SVt_PVIV = %d; cannot marshall through concurrent container",

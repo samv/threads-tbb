@@ -153,7 +153,7 @@ perl_for_int_method( pTHX_ perl_tbb_init* context, SV* inv_sv, std::string metho
 };
 
 // the crazy^Wlazy clone function :)
-SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl);
+SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter* other_perl);
 
 #endif
 
