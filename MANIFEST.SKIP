@@ -1,7 +1,7 @@
 META.yml
 ^Makefile$
 \.bak$
-\.old$
+\.(old|rej|orig)$
 ^blib(/.*)?$
 ^inc$
 pm_to_blib
@@ -13,3 +13,5 @@ SIGNATURE$
 ^\.?#
 \.(aux|dvi|idx|log|pdf|ps|tex|toc|o|c|bs|bak|old)$
 ^\.(gitignore|gdbinit)
+^Build
+^_build
