@@ -10,6 +10,7 @@ extern "C" {
 
 /* include your class headers here */
 #include "tbb.h"
+#include "interpreter_pool.h"
 
 /* We need one MODULE... line to start the actual XS section of the file.
  * The XS++ preprocessor will output its own MODULE and PACKAGE lines */

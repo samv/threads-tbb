@@ -15,10 +15,12 @@
 #include "tbb/spin_mutex.h"
 typedef tbb::spin_mutex      mutex_t;
 
-#if __GNUC__ >= 3   /* I guess. */
-#define _warn(msg, e...) warn("# (" __FILE__ ":%d): " msg, __LINE__, ##e)
+#if _WIN32||_WIN64
+#define raw_thread_id DWORD
+#define get_raw_thread_id() GetCurrentThreadId()
 #else
-#define _warn warn
+#define raw_thread_id pthread_t
+#define get_raw_thread_id() pthread_self()
 #endif
 
 // see this source file for enabling IF_DEBUG_* macros
@@ -128,48 +130,8 @@ perl_for_int_method( pTHX_ perl_tbb_init* context, SV* inv_sv, std::string metho
 	void operator()( const perl_tbb_blocked_int& r ) const;
 };
 
-
-struct ptr_compare {
-	static size_t hash( void* const& x ) {
-		size_t h = 0;
-		if (sizeof(void*) != sizeof(size_t) ) {
-			int i = 0;
-			for (const char* s = (char*)x; i<sizeof(void*); ++s) {
-				h = (h*17) ^ *s;
-				i++;
-			}
-		}
-		else {
-			h = *( (size_t*)x );
-		}
-		return h;
-	}
-	
-	static bool equal( void* const& a, void* const& b) {
-		return (a == b);
-	}
-};
-
-typedef tbb::concurrent_hash_map<void*, int, ptr_compare> ptr_to_worker;
-extern ptr_to_worker tbb_interpreter_numbers;
-
-// freelist; next time interpreter wakes, it will free the items in this
-// list.
-class perl_interpreter_freelist : public tbb::concurrent_vector<tbb::strict_ppl::concurrent_queue<perl_concurrent_slot> > {
-public:
-	void free( PerlInterpreter* owner, SV *sv );
-	void free( const perl_concurrent_slot item );
-	perl_concurrent_slot* next( pTHX );
-};
-
-// the global pointer to the interpreter locks
-extern perl_interpreter_freelist tbb_interpreter_freelist;
-
-//typedef perl_interpreter_pool::accessor tbb_interpreter_lock;
-
-// the crazy clone function :)
+// the crazy^Wlazy clone function :)
 SV* clone_other_sv(PerlInterpreter* my_perl, SV* sv, PerlInterpreter* other_perl);
-
 
 #endif
 

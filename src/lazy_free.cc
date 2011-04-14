@@ -8,6 +8,7 @@ extern "C" {
 }
 
 #include "tbb.h"
+#include "interpreter_pool.h"
 
 perl_interpreter_freelist tbb_interpreter_freelist = perl_interpreter_freelist();
 ptr_to_worker tbb_interpreter_numbers = ptr_to_worker();
