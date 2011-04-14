@@ -223,7 +223,8 @@ modules yourself.
 
 =head1 METHODS
 
-These methods are all called on the tbb object.
+These methods are available on I<body objects> which must first be
+obtained by methods on the C<threads::tbb> object.
 
 =head2 parallel_for
 
