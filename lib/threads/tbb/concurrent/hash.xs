@@ -38,7 +38,16 @@ perl_concurrent_hash_writer::get()
 		RETVAL = (*THIS)->second.dup( my_perl );
 	else
 		XSRETURN_UNDEF;
+  OUTPUT: RETVAL
 
+SV*
+perl_concurrent_hash_writer::clone()
+  CODE:
+	IF_DEBUG_VECTOR("got here, thingy = %x", (*THIS)->second.thingy);
+	if ((*THIS)->second.thingy)
+		RETVAL = (*THIS)->second.clone( my_perl );
+	else
+		XSRETURN_UNDEF;
   OUTPUT: RETVAL
 
 void
@@ -95,6 +104,16 @@ perl_concurrent_hash_reader::get()
 	RETVAL = (*THIS)->second.dup( my_perl );
   OUTPUT: RETVAL
 
+SV*
+perl_concurrent_hash_reader::clone()
+  CODE:
+	IF_DEBUG_VECTOR("got here, thingy = %x", (*THIS)->second.thingy);
+	if ((*THIS)->second.thingy)
+		RETVAL = (*THIS)->second.clone( my_perl );
+	else
+		XSRETURN_UNDEF;
+  OUTPUT: RETVAL
+
 void
 perl_concurrent_hash_reader::DESTROY()
 CODE:
@@ -108,7 +127,7 @@ CODE:
 	}
 
 int
-perl_concurrent_hash_writer::CLONE_SKIP()
+perl_concurrent_hash_reader::CLONE_SKIP()
   CODE:
 	RETVAL = 1;
   OUTPUT:

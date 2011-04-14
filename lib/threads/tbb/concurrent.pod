@@ -11,23 +11,27 @@ threads::tbb::concurrent:: - namespace for concurrent TBB containers
  $array[0] = $val;
  push @array, @items;
 
- # TODO:
- tie my @queue, "threads::tbb::concurrent::queue";
- push @queue, $val;
- my $val = shift @queue;
-
- # TODO:
+ # HASH tie interface:
  tie my %hash, "threads::tbb::concurrent::hash";
- my $slot = \$hash{key};
- say "it exists" if $slot->exists;  # extension
- # fetch / store
- print "it is set to : ".$$slot;
- $$slot = "value";
- # erasing a key
- $slot->delete;  # extension
- # concurrent iteration - not safe for update
- my ($key, $value) = each %hash;
+ my $value = $hash{key};  # always deep copies
+ $hash{key} = $value;    # careful!
 
+ # preferred Hash API: for access:
+ my $hash = tied %hash;           # doesn't need to be tied really
+ my $slot = $hash->reader($key);
+ print $slot->get();              # now safe
+ my $copy = $slot->clone();       # also fine
+ undef($slot);                    # release lock
+
+ # for writing:
+ $slot = (tied %hash)->writer($key);
+ $value = $slot->get();           # get the value out
+ $slot->set([$value]);            # fine
+ $copy = $slot->clone();          # $copy now a dup of [$value]
+ undef($slot);                    # release lock
+
+ # TODO hash API:
+ my ($key, $value) = each %hash;
  # concurrent iteration - safe for update
  my $iterator = tied(%hash)->iterator;
  my ($key, $slot) = $iterator->();
@@ -40,20 +44,25 @@ threads::tbb::concurrent:: - namespace for concurrent TBB containers
  $item = $val;
  print $item;
 
- # TODO:
+ # TODO queue/channel interface:
+ tie my @queue, "threads::tbb::concurrent::queue";
+ push @queue, $val;
+ my $val = shift @queue;
+
 =head1 DESCRIPTION
 
-The C<threads::tbb::concurrent::> series of modules wrap
-respective tbb concurrent classes.  Or, at least they will
-once they are written.  For now only the array interface
-exists; see L<threads::tbb::concurrent::array>.
+The C<threads::tbb::concurrent::> series of modules wrap respective
+tbb concurrent classes.  For now there are two main container classes
+- L<threads::tbb::concurrent::array> and
+L<threads::tbb::concurrent::hash>
 
 Note that they are only concurrent if you restrict yourself to the
 concurrent APIs.  Other ways of accessing the containers may result in
 programs with race conditions.
 
-Also, the SCALAR interface: L<threads::tbb::concurrent::item> has no
-locking mechanism.
+Also, the SCALAR interface: L<threads::tbb::concurrent::item>
+currently has no locking mechanism, it is currently just an auxilliary
+way of shunting data between interpreters using the lazy clone method.
 
 =head2 Lazy deep copying
 
