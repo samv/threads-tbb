@@ -8,6 +8,7 @@
 #include "tbb/concurrent_vector.h"
 #include "tbb/concurrent_hash_map.h"
 #include "tbb/parallel_for.h"
+#include "tbb/pipeline.h"
 #include <iterator>
 #include <set>
 #include <list>
@@ -174,5 +175,51 @@ perl_for_int_method( pTHX_ perl_tbb_init* context, SV* inv_sv, std::string metho
 // the crazy^Wlazy clone function :)
 SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter* other_perl);
 
+// simplest filter class: call a global method (no extra state)
+class perl_filter_func : public tbb::filter {
+	perl_tbb_init* context;
+public:
+	std::string methodname;
+	perl_filter_func(
+		pTHX_
+		perl_tbb_init* context,
+		bool is_serial
+	) : tbb::filter(is_serial),
+		context(context)
+	{ };
+	void* operator()( void* item );
+	~perl_filter_func();
+};
+
+// more complex filter class: allows an invocant to be deeply copied
+// and passed to the function
+class perl_filter_method : public tbb::filter {
+	perl_tbb_init* context;
+	perl_concurrent_slot invocant;
+        perl_concurrent_vector* copied;
+public:
+	std::string methodname;
+	perl_filter_method(
+		pTHX_
+		perl_tbb_init* context,
+		SV* inv_sv,
+		std::string methodname,
+		bool is_serial
+	) : tbb::filter(is_serial),
+		context(context), methodname(methodname)
+	{
+		copied = new perl_concurrent_vector();
+		SV* newsv = newSV(0);
+		SvSetSV_nosteal(newsv, inv_sv);
+		IF_DEBUG_PERLCALL(
+			"copied %x to %x (refcnt = %d)",
+			inv_sv, newsv, SvREFCNT(newsv)
+			);
+		invocant = perl_concurrent_slot(my_perl, newsv); 
+	};
+	SV* get_invocant( pTHX_ int worker );
+	void* operator()( void* item );
+	~perl_filter_method();
+};
 #endif
 

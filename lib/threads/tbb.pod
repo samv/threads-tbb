@@ -273,6 +273,15 @@ where required, and pass references where the values came from the
 same interpreter.  There is more discussion of this on
 L<threads::tbb::concurrent>
 
+=head2 pipeline & filter
+
+This extremely useful API allows you to structure code that performs
+multiple discrete steps on a continuous stream of data, with worker
+threads picking up whatever needs doing.
+
+Creating both pipelines and filters is a method of the C<threads::tbb>
+class:
+
 =head2 parallel_map#TODO
 
 The calling convention of C<parallel_for> allows you to manually
@@ -340,12 +349,6 @@ two methods.
  );
 
  $tbb->parallel_reduce($array_range, $body);
-
-=head2 pipeline / filter #TODO
-
-This extremely useful API allows you to structure code that performs
-multiple discrete steps on a continuous stream of data, with worker
-threads picking up whatever needs doing.
 
 =head2 parallel_while#TODO
 
