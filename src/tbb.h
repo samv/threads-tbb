@@ -70,19 +70,38 @@ public:
 	perl_concurrent_vector() : refcnt(0) {}
 };
 
-struct hek_compare_funcs {
-	static size_t hash( const HEK& hek ) {
-		return hek.hek_hash;
+class cpp_hek {
+public:
+	U32 hash;
+	STRLEN len;
+	std::string key_utf8;
+	
+	cpp_hek( const char* hash_this, size_t n, U32 hash ) : key_utf8(hash_this, n), len(n), hash(hash) {
+		IF_DEBUG_VECTOR("made hash(n): %x:%d:%s", hash, n, key_utf8.c_str());
 	}
-	static bool equal( const HEK& a, const HEK& b ) {
-		return ( (a.hek_len == b.hek_len) ||
-			 strcmp(a.hek_key, b.hek_key) );
+	bool equal( const cpp_hek& other ) const {
+		IF_DEBUG_VECTOR("comparing: %x:%d:%s", hash, len, key_utf8.c_str());
+		IF_DEBUG_VECTOR("     with: %x:%d:%s", other.hash, other.len, other.key_utf8.c_str());
+		bool rv = ( len == other.len &&
+			    key_utf8 == other.key_utf8 );
+		IF_DEBUG_VECTOR("     => %s", (rv ? "equal":"not equal"));
+		return rv;
+	}
+};
+
+
+struct hek_compare_funcs {
+	static size_t hash( const cpp_hek& hek ) {
+		return hek.hash;
+	}
+	static bool equal( const cpp_hek& a, const cpp_hek& b ) {
+		return a.equal(b);
 	}
 };
 
 // threads::tbb::concurrent::hash - map from the Perl Hash Key to a
 // lazy slot
-class perl_concurrent_hash : public tbb::concurrent_hash_map<HEK, perl_concurrent_slot, hek_compare_funcs> {
+class perl_concurrent_hash : public tbb::concurrent_hash_map<cpp_hek, perl_concurrent_slot, hek_compare_funcs> {
 public:
 	int refcnt;
 	perl_concurrent_hash() : refcnt(0) {}

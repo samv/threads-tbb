@@ -13,20 +13,13 @@ extern "C" {
 #include "tbb.h"
 #include "interpreter_pool.h"
 
-HEK* new_hek(const char *str, I32 len, U32 hash) {
-	    char *k;
-    register HEK *hek;
-
-    Newx(k, HEK_BASESIZE + len + 2, char);
-    hek = (HEK*)k;
-    Copy(str, HEK_KEY(hek), len, char);
-    HEK_KEY(hek)[len] = 0;
-    HEK_LEN(hek) = len;
-    HEK_HASH(hek) = hash;
-    HEK_FLAGS(hek) = (unsigned char)HVhek_UTF8 | HVhek_UNSHARED;
-
-    return hek;
-}
+#define NEW_CPP_HEK_sv(sv)  ({					\
+		STRLEN len;					\
+		const char* sv_pv = SvPVutf8( key, len );	\
+		U32 hash;					\
+		PERL_HASH(hash, sv_pv, len);			\
+		new cpp_hek( sv_pv, len, hash );		\
+		})
 
 MODULE = threads::tbb::concurrent::hash::writer    PACKAGE = threads::tbb::concurrent::hash::writer
 
@@ -150,26 +143,24 @@ perl_concurrent_hash::FETCH(key)
 	SV* key;
   PREINIT:
 	SV* mysv;
-	char* hek_char;
-	const HEK* hek;
-	const char* sv_pv;
-	STRLEN len;
-	U32 hash;
+	cpp_hek* hek;
 	perl_concurrent_hash_reader lock;
 
   CODE:
-	sv_pv = SvPVutf8( key, len );
-	PERL_HASH(hash, sv_pv, len );
-	hek = new_hek( sv_pv, len, hash );
+	hek = NEW_CPP_HEK_sv(key);
 
+	IF_DEBUG_VECTOR("%x:looking for %x:%d:%s", THIS, hek->hash, hek->len, hek->key_utf8.c_str());
 	if ( THIS->find( lock, *hek ) ) {
-		Safefree(hek);
+		IF_DEBUG_VECTOR("%x:found : %x:%d:%s", THIS, hek->hash, hek->len, hek->key_utf8.c_str());
+		IF_DEBUG_VECTOR("%x:&slot = %x", THIS, &(*lock).second);
 		RETVAL = (*lock).second.clone( my_perl );
-		IF_DEBUG_VECTOR("FETCH{%s}: returning %x: copied to %x (refcnt = %d)", SvPV_nolen(key), (*lock).second.thingy, RETVAL, SvREFCNT(RETVAL));
+		IF_DEBUG_VECTOR("%x:FETCH{%s}: returning %x: copied to %x (refcnt = %d)", THIS, SvPV_nolen(key), (*lock).second.thingy, RETVAL, SvREFCNT(RETVAL));
+		delete hek;
 	}
 	else {
-		Safefree(hek);
-		IF_DEBUG_VECTOR("FETCH{%s}: returning undef", SvPV_nolen(key));
+		IF_DEBUG_VECTOR("%x:not found : %x:%d:%s", THIS, hek->hash, hek->len, hek->key_utf8.c_str());
+		delete hek;
+		IF_DEBUG_VECTOR("%x:FETCH{%s}: returning undef", THIS, SvPV_nolen(key));
 		XSRETURN_UNDEF;
 	}
 
@@ -181,24 +172,21 @@ perl_concurrent_hash::STORE(key, v)
 	SV* key;
 	SV* v;
   PREINIT:
-	const HEK* hek;
-	const char* sv_pv;
-	STRLEN len;
-	U32 hash;
+	cpp_hek* hek;
 	perl_concurrent_hash_writer lock;
 	perl_concurrent_slot* slot;
 	SV* nsv;
 	
   PPCODE:
-	sv_pv = SvPVutf8( key, len );
-	PERL_HASH(hash, sv_pv, len );
-	hek = new_hek( sv_pv, len, hash );
+	hek = NEW_CPP_HEK_sv(key);
 
-	IF_DEBUG_VECTOR("STORE (%s, %x) (refcnt = %d)", sv_pv, v, SvREFCNT(v));
+	IF_DEBUG_VECTOR("%x:STORE storing key %x:%d:%s", THIS, hek->hash, hek->len, hek->key_utf8.c_str());
 	
 	if (THIS->find( lock, *hek )) {
-		Safefree(hek);
+		IF_DEBUG_VECTOR("%x:update %s", THIS, hek->key_utf8.c_str());
+		delete hek;
 		slot = &(*lock).second;
+	 IF_DEBUG_VECTOR("%x:&slot = %x", THIS, slot);
 		SV* o = slot->thingy;
 		if (o) {
 			IF_DEBUG_VECTOR("old = %x", o);
@@ -213,14 +201,17 @@ perl_concurrent_hash::STORE(key, v)
 		}
 	}
 	else {
+		IF_DEBUG_VECTOR("%x:insert %s", THIS, hek->key_utf8.c_str());
 		THIS->insert( lock, *hek );
 		
 		slot = &(*lock).second;
+	 IF_DEBUG_VECTOR("%x:&slot = %x", THIS, slot);
 	}
 
 	nsv = newSV(0);
 	SvSetSV_nosteal(nsv, v);
-	IF_DEBUG_VECTOR("new = %x (refcnt = %d)", nsv, SvREFCNT(nsv));
+IF_DEBUG_VECTOR("%x:new = %x (refcnt = %d)", THIS, nsv, SvREFCNT(nsv));
+IF_DEBUG_VECTOR("%x:&slot = %x", THIS, slot);
 	slot->owner = my_perl;
 	slot->thingy = nsv;
 	
@@ -262,31 +253,26 @@ SV*
 perl_concurrent_hash::reader(key)
 	SV* key;
   PREINIT:
-	const HEK* hek;
-	const char* sv_pv;
-	STRLEN len;
-	U32 hash;
+	cpp_hek* hek;
 	perl_concurrent_hash_reader* lock;
 	perl_concurrent_slot* slot;
 	SV* nsv;
   CODE:
-	sv_pv = SvPVutf8( key, len );
-	PERL_HASH(hash, sv_pv, len );
-	hek = new_hek( sv_pv, len, hash );
+	hek = NEW_CPP_HEK_sv( key );
 
-	IF_DEBUG_VECTOR("new reader for {%s} (HASH=%x)", SvPV_nolen(key), hash);
+	IF_DEBUG_VECTOR("new reader for {%s} (HASH=%x)", SvPV_nolen(key), hek->hash);
 	lock = new perl_concurrent_hash_reader();
 	IF_DEBUG_VECTOR("find");
 	if (THIS->find( *lock, *hek )) {
 		IF_DEBUG_VECTOR("found");
 		RETVAL = newSV(0);
 		sv_setref_pv( RETVAL, "threads::tbb::concurrent::hash::reader", (void*) lock);
-		Safefree(hek);
+		delete hek;
 	}
 	else {
 		IF_DEBUG_VECTOR("not found");
 		delete lock;
-		Safefree(hek);
+		delete hek;
 		XSRETURN_UNDEF;
 	}
   OUTPUT:
@@ -296,22 +282,17 @@ perl_concurrent_hash_writer*
 perl_concurrent_hash::writer(key)
 	SV* key;
   PREINIT:
-	const HEK* hek;
-	const char* sv_pv;
-	STRLEN len;
-	U32 hash;
+	cpp_hek* hek;
 	perl_concurrent_hash_writer* lock;
 	perl_concurrent_slot* slot;
 	SV* nsv;
   CODE:
-	sv_pv = SvPVutf8( key, len );
-	PERL_HASH(hash, sv_pv, len );
-	hek = new_hek( sv_pv, len, hash );
+	hek = NEW_CPP_HEK_sv( key );
 
-	IF_DEBUG_VECTOR("new writer for {%s} (HASH=%x)", SvPV_nolen(key), hash);
+	IF_DEBUG_VECTOR("new writer for {%s} (HASH=%x)", SvPV_nolen(key), hek->hash);
 	lock = new perl_concurrent_hash_writer();
 	THIS->insert( *lock, *hek );
-	Safefree(hek);
+	delete hek;
 	RETVAL = lock;
   OUTPUT:
 	RETVAL
