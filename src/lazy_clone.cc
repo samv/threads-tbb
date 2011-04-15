@@ -20,8 +20,9 @@ extern "C" {
  *   code is quite tied to the particular Perl API, until there is a
  *   better C-level (const) iterator API for hashes.
  *
- * - implemented using a stack and map; but the approach is quite
- *   similar to the one used in shared_clone's private closure.
+ * - implemented using a stack and map; the approach is quite similar
+ *   to the one used in shared_clone's private closure, except using
+ *   C++ and STL templates.
  */
 
 #include  <list>
@@ -344,12 +345,14 @@ SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter
 				break;
 			case SVt_PVNV:	
 				IF_DEBUG_CLONE("     => PVNV (%s, %g)", SvPVX(it), SvNVX(it));
-				if (!SvPVX(it))
+				if (!SvNOK(it))
+					goto force_iv;
+				if (!SvPOK(it))
 					goto force_nv;
 				goto xx;
 			case SVt_PVIV:
 				IF_DEBUG_CLONE("     => PVIV (%s, %d)", SvPVX(it), SvIVX(it));
-				if (!SvPVX(it))
+				if (!SvPOK(it))
 					goto force_iv;
 				goto xx;
 		

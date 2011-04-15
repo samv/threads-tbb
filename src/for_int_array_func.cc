@@ -49,7 +49,8 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 	//   // set the global stack pointer to the same as our local copy
 	PUTBACK;
 
-	IF_DEBUG_THR("calling %s", this->funcname.c_str() );
+	IF_DEBUG_THR("calling %s with [%d,%d)",
+		     this->funcname.c_str(), r.begin(), r.end() );
 	call_pv(this->funcname.c_str(), G_VOID|G_EVAL);
 	//   // in case stack was re-allocated
 	SPAGAIN;
@@ -62,15 +63,12 @@ void perl_for_int_array_func::operator()( const perl_tbb_blocked_int& r ) const 
 		POPs;
 		PUTBACK;
 	}
-	IF_DEBUG_PERLCALL( "($@ ok)" );
 
 	sv_setiv(SvRV(range), 0);
 	SvREFCNT_dec(range);
 	//   // free up those temps & PV return value
 	FREETMPS;
-	IF_DEBUG_PERLCALL( "(FREETMPS ok)" );
 	LEAVE;
-	IF_DEBUG_PERLCALL( "(LEAVE ok)" );
 
 	IF_DEBUG_PERLCALL( "done processing range [%d,%d)",
 			   r.begin(), r.end() );
