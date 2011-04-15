@@ -27,7 +27,7 @@ void perl_tbb_init::mark_master_thread_ok() {
 		bool found = tbb_interpreter_numbers.find( numlock, my_perl );
 		tbb_interpreter_numbers.insert( numlock, my_perl );
 		(*numlock).second = 0;
-		IF_DEBUG_FREE("inserted %x => 0 (master) to tbb_interpreter_numbers");
+		IF_DEBUG_FREE("inserted %x => 0 (master) to tbb_interpreter_numbers", my_perl);
 	}
 }
 

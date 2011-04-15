@@ -40,7 +40,7 @@ void perl_interpreter_pool::grab( perl_interpreter_pool::accessor& lock, perl_tb
 		// start an interpreter!  fixme: load some code :)
 		my_perl = perl_alloc();
 #ifdef DEBUG_PERLCALL
-		IF_DEBUG(fprintf(stderr, "thr %x: allocated an interpreter (%x) for worker %d\n", thread_id, my_perl, lock->second));
+		IF_DEBUG(fprintf(stderr, "# --- thr %x: allocated an interpreter (%x) for worker %d\n", thread_id, my_perl, lock->second));
 #endif
 
 		{

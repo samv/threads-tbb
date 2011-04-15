@@ -15,8 +15,10 @@ ptr_to_worker tbb_interpreter_numbers = ptr_to_worker();
 
 // freeing old (values of) slots.
 void perl_interpreter_freelist::free( const perl_concurrent_slot item ) {
+	IF_DEBUG_FREE("free, free as can be!  %x / %x", item.owner, item.thingy);
 	ptr_to_worker::const_accessor lock;
 	bool found = tbb_interpreter_numbers.find( lock, item.owner );
+	IF_DEBUG_FREE("found = %s  lock = %x", (found?"true":"false"), &lock );
 	if (!found) {
 		IF_DEBUG_FREE("What?  No entry in tbb_interpreter_numbers for %x?", item.owner);
 		return;
@@ -38,7 +40,7 @@ perl_concurrent_slot* perl_interpreter_freelist::next( pTHX ) {
 	bool found = tbb_interpreter_numbers.find( lock, my_perl );
 	int worker = 0;
 	if (!found) {
-		IF_DEBUG_FREE("What?  No entry in tbb_interpreter_numbers?");
+		IF_DEBUG_FREE("What?  No entry in tbb_interpreter_numbers for %x?", my_perl);
 		SV* tbb_worker = get_sv("threads::tbb::worker", 0);
 		if (tbb_worker)
 			worker = SvIV(tbb_worker);
