@@ -68,7 +68,7 @@ struct ptr_compare {
 			}
 		}
 		else {
-			h = *( (size_t*)x );
+			h = 0+(size_t)x;
 		}
 		return h;
 	}
