@@ -33,6 +33,60 @@
 # overhead, and so it helps that the master thread can proceed at
 # "full steam" for avoiding the overheads exceeding the return.
 
+# 8-way/EC2 results (on EC2):
+
+# # 1-way
+# loading input: 132ms
+# processing: 371ms
+# Workers processed: 0.0% :  ()
+# Master processed: 100.0% : 71063
+# Total processed: 71063
+# # 2-way
+# loading input: 126ms
+# processing: 270ms
+# Workers processed: 37.5% : 26649 (1 26649)
+# Master processed: 62.5% : 44414
+# Total processed: 71063
+# # 4-way
+# loading input: 125ms
+# processing: 191ms
+# Workers processed: 59.0% : 41916 (1 15544 3 12909 2 13463)
+# Master processed: 41.0% : 29147
+# Total processed: 71063
+# # 8-way
+# loading input: 125ms
+# processing: 263ms
+# Workers processed: 62.5% : 44412 (6 6348 1 6384 4 6246 3 4546 7 7216 2 7010 5 6662)
+# Master processed: 37.5% : 26651
+# Total processed: 71063
+
+# with LD_PRELOAD=libtbbmalloc_proxy.so.2:
+#
+# # 1-way
+# loading input: 163ms
+# processing: 370ms
+# Workers processed: 0.0% :  ()
+# Master processed: 100.0% : 71063
+# Total processed: 71063
+# # 2-way
+# loading input: 162ms
+# processing: 263ms
+# Workers processed: 37.5% : 26649 (1 26649)
+# Master processed: 62.5% : 44414
+# Total processed: 71063
+# # 4-way
+# loading input: 167ms
+# processing: 155ms
+# Workers processed: 60.4% : 42913 (1 14158 3 14208 2 14547)
+# Master processed: 39.6% : 28150
+# Total processed: 71063
+# # 8-way
+# loading input: 168ms
+# processing: 125ms
+# Workers processed: 69.8% : 49637 (6 2342 1 7531 4 8632 3 9087 7 3886 2 8363 5 9796)
+# Master processed: 30.2% : 21426
+# Total processed: 71063
+
  package Incredible::Threadable;
  use threads::tbb;
 
@@ -52,7 +106,7 @@
      # Initialize the TBB library, and set a specification of required
      # modules and/or library paths for worker threads.
      my $tbb = threads::tbb->new(
-	     #threads => 1,
+	     threads => 1,
 	     requires => [ $0 ] );
 
      my $min = 0;
