@@ -36,10 +36,6 @@ my (@clean, @OBJECT, @LD_FROM, %XS);
 	push @LD_FROM, $o;
         push @clean, $o;
     }
-
-    print STDERR "XS: @{[ %XS ]}\n";
-    print STDERR "Object: @OBJECT\n";
-    print STDERR "LDFrom: @LD_FROM\n";
 }
 WriteMakefile(
     NAME              => 'threads::tbb',
