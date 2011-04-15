@@ -219,7 +219,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter
 			HE** contents;
 			const char* str;
 			STRLEN len;
-			SV* nv;
+			SV* nsv;
 			SV* magic_sv;
 			IF_DEBUG_CLONE("   SV is not ROK but type %d", SvTYPE(it));
 			switch (SvTYPE(it)) {
@@ -333,36 +333,47 @@ SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter
 			case SVt_PVGV:
 				croak("cannot put GLOB reference in a concurrent container");
 				break;
-			case SVt_IV:
-			force_iv:
-				IF_DEBUG_CLONE("     => IV (%d)", SvIVX(it));
-				done[it] = graph_walker_slot(newSViv(SvIVX(it)), true);
-				break;
 			case SVt_NV:
-			force_nv:
 				IF_DEBUG_CLONE("     => NV (%g)", SvNVX(it));
-				done[it] = graph_walker_slot(newSVnv(SvNVX(it)), true);
-				break;
+				goto do_it;
+			case SVt_IV:
+				IF_DEBUG_CLONE("     => IV (%d)", SvIVX(it));
+				goto do_it;
 			case SVt_PVNV:	
-				IF_DEBUG_CLONE("     => PVNV (%s, %g)", SvPVX(it), SvNVX(it));
-				if (!SvNOK(it))
-					goto force_iv;
-				if (!SvPOK(it))
-					goto force_nv;
-				goto xx;
+				IF_DEBUG_CLONE("     => PVNV (%s%s%s)",
+					       (SvPOK(it)?"POK, ":""),
+					       (SvNOK(it)?"NOK, ":""),
+					       (SvIOK(it)?"IOK, ":""));
+				goto do_it;
 			case SVt_PVIV:
-				IF_DEBUG_CLONE("     => PVIV (%s, %d)", SvPVX(it), SvIVX(it));
-				if (!SvPOK(it))
-					goto force_iv;
-				goto xx;
-		
+				IF_DEBUG_CLONE("     => PVIV (%s%s%s)",
+					       (SvPOK(it)?"POK, ":""),
+					       (SvNOK(it)?"NOK, ":""),
+					       (SvIOK(it)?"IOK, ":""));
+				goto do_it;
 			case SVt_PV:
 				IF_DEBUG_CLONE("     => PV (%s)", SvPVX(it));
-			xx:
-				STRLEN len;
-				str = SvPVX(it);
-				len = SvCUR(it);
-				done[it] = graph_walker_slot(newSVpv( str, len ), true);
+			do_it:
+			  	if (SvPOK(it)) {
+					str = SvPVX(it);
+					len = SvCUR(it);
+					nsv = newSVpv( str, len );
+					IF_DEBUG_CLONE("     => stringval = '%s'", str);
+				}
+				else {
+					nsv = newSV(0);
+				}
+				SvUPGRADE(nsv, SvTYPE(it));
+				if (SvIOK(it)) {
+					sv_setiv(nsv, SvIVX(it));
+					IF_DEBUG_CLONE("     => int = '%d'", SvIVX(it));
+				}
+				if (SvNOK(it)) {
+					sv_setnv(nsv, SvNVX(it));
+					IF_DEBUG_CLONE("     => num = '%g'", SvNVX(it));
+				}
+
+				done[it] = graph_walker_slot(nsv, true);
 				break;
 			case SVt_PVMG:
 				IF_DEBUG_CLONE("     => PVMG (%x)", SvIVX(it));
