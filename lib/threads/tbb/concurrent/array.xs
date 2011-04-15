@@ -61,7 +61,7 @@ perl_concurrent_vector::STORE(i, v)
 	THIS->grow_to_at_least( i+1 );
 	perl_concurrent_slot* slot = &((*THIS)[i]);
 	SV* o = slot->thingy;
-	if (o) {
+	if (o != 0) {
 		IF_DEBUG_VECTOR("old = %x", o);
 		if (my_perl == slot->owner) {
 			IF_DEBUG_VECTOR("SvREFCNT_dec(%x) (refcnt = %d)", o, SvREFCNT(o));
@@ -72,13 +72,17 @@ perl_concurrent_vector::STORE(i, v)
 			tbb_interpreter_freelist.free( *slot );
 		}
 	}
-        nsv = newSV(0);
-	SvSetSV_nosteal(nsv, v);
-	//SvREFCNT_inc(nsv);
-	IF_DEBUG_VECTOR("new = %x (refcnt = %d)", nsv, SvREFCNT(nsv));
-	slot->owner = my_perl;
-	slot->thingy = nsv;
-	
+	if (v == &PL_sv_undef) {
+		slot->thingy = 0;
+	}
+	else {
+		nsv = newSV(0);
+		SvSetSV_nosteal(nsv, v);
+		//SvREFCNT_inc(nsv);
+		IF_DEBUG_VECTOR("new = %x (refcnt = %d)", nsv, SvREFCNT(nsv));
+		slot->owner = my_perl;
+		slot->thingy = nsv;
+	}
 
 void
 perl_concurrent_vector::STORESIZE( i )
