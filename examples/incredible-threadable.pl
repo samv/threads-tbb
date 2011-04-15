@@ -100,18 +100,24 @@
              output => \@output, }, $class;
  }
 
+ sub threads { our $threads; shift if UNIVERSAL::isa($_[0],__PACKAGE__);
+	$threads = $_[0] if @_;
+	return $threads };
+ sub chunk_size { our $chunk_size; shift if UNIVERSAL::isa($_[0],__PACKAGE__);
+	$chunk_size = $_[0] if @_;
+	return $chunk_size };
  sub parallel_transmogrify {
      my $self = shift;
 
      # Initialize the TBB library, and set a specification of required
      # modules and/or library paths for worker threads.
      my $tbb = threads::tbb->new(
-	     threads => 1,
+	     (threads() ? ("threads" => threads()) : ()),
 	     requires => [ $0 ] );
 
      my $min = 0;
      my $max = scalar(@{ $self->{input} });
-     my $range = threads::tbb::blocked_int->new( $min, $max, 1 );
+     my $range = threads::tbb::blocked_int->new( $min, $max, chunk_size()||1 );
 
      my $body = $tbb->for_int_method( $self, "my_callback" );
 
@@ -145,6 +151,12 @@
 
  use Scriptalicious;
  use List::Util qw(sum);
+ getopt(
+	"threads|t=i" => \(my $num_threads),
+	"chunk-size|chunk|c=i" => \(my $chunk_size),
+	);
+ Incredible::Threadable->threads($num_threads);
+ Incredible::Threadable->chunk_size($chunk_size);
 
  unless ($threads::tbb::worker) {  # single script uses can use this
      start_timer();
