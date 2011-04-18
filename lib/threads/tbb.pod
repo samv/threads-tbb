@@ -381,6 +381,10 @@ Not implemented.
 
 =head1 SEE ALSO
 
+L<threads::tbb::blocked_int>, L<threads::tbb::concurrent>,
+L<threads::tbb::concurrent:item>, L<threads::tbb::concurrent::array>,
+L<threads::tbb::concurrent::hash>
+
 L<threads>, L<threads::lite>
 
 L<http://threadingbuildingblocks.org>
