@@ -222,6 +222,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter
 			bool all_found = true;
 			int num;
 			HE** contents;
+			HE* he;
 			const char* str;
 			STRLEN len;
 			SV* nsv;
@@ -287,27 +288,31 @@ SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter
 				// side-effect free hash iteration :)
 				num = HvMAX(it);
 				contents = HvARRAY(it);
-				//IF_DEBUG_CLONE("   walking over %d slots at contents @%x", num+1, contents);
-				//IF_DEBUG_CLONE("   (PL_sv_placeholder = %x)", &PL_sv_placeholder);
+				IF_DEBUG_CLONE("   walking over %d slots at contents @%x", num+1, contents);
+				IF_DEBUG_CLONE("   (PL_sv_placeholder = %x)", &PL_sv_placeholder);
 				for (int i = 0; i <= num; i++ ) {
-				  //IF_DEBUG_CLONE("   contents[%d] = %x", i, contents[i]);
+				  IF_DEBUG_CLONE("   contents[%d] = %x", i, contents[i]);
 					if (!contents[i])
 						continue;
-					SV* val = HeVAL(contents[i]);
-					IF_DEBUG_CLONE("   {%s} = %x", HePV(contents[i], len), val);
+					HE* hent = contents[i];
+				another_key:
+					SV* val = HeVAL(hent);
+					IF_DEBUG_CLONE("   {%s} = %x", HePV(hent, len), val);
+					hent = hent->hent_next;
 					// thankfully, PL_sv_placeholder is a superglobal.
-					if (val == &PL_sv_placeholder)
-						continue;
-
-					target = done.find(val);
-					if (target == done.end()) {
-						if (all_found) {
-							IF_DEBUG_CLONE("   contains unseen slot values");
-							todo.push_back(it);
-							all_found = false;
+					if (val != &PL_sv_placeholder) {
+						target = done.find(val);
+						if (target == done.end()) {
+							if (all_found) {
+								IF_DEBUG_CLONE("   contains unseen slot values");
+								todo.push_back(it);
+								all_found = false;
+							}
+							todo.push_back(val);
 						}
-						todo.push_back(val);
 					}
+					if (hent != 0)
+						goto another_key;
 				}
 				if (all_found) {
 					IF_DEBUG_CLONE("   no unseen slot values");
@@ -317,19 +322,23 @@ SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter
 						if (!hent) {
 							continue;
 						}
+					another_key_out:
 						SV* val = HeVAL( hent );
-						if (val == &PL_sv_placeholder)
-							continue;
-						STRLEN key_len;
-						const char* key = HePV( hent, key_len );
+						if (val != &PL_sv_placeholder) {
+							STRLEN key_len;
+							const char* key = HePV( hent, key_len );
 						
-						target = done.find(val);
-						IF_DEBUG_CLONE("   hv_fetch(%x, '%s', %d, 1)", hv, key, key_len);
-						SV**slot = hv_fetch( hv, key, key_len, 1); 
-						IF_DEBUG_CLONE("   => %x", done[val].tsv);
-						*slot = done[val].tsv;
-						SvREFCNT_inc(*slot);
-						//hv_store( hv, key, key_len, (*target).second.tsv, 0 );
+							target = done.find(val);
+							IF_DEBUG_CLONE("   hv_fetch(%x, '%s', %d, 1)", hv, key, key_len);
+							SV**slot = hv_fetch( hv, key, key_len, 1); 
+							IF_DEBUG_CLONE("   => %x", done[val].tsv);
+							*slot = done[val].tsv;
+							SvREFCNT_inc(*slot);
+							//hv_store( hv, key, key_len, (*target).second.tsv, 0 );
+						}
+						hent = hent->hent_next;
+						if (hent != 0)
+							goto another_key_out;
 					}
 					(SV*)hv;
 					//SvREFCNT_inc((SV*)hv);

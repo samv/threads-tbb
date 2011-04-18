@@ -99,6 +99,7 @@ sub TestN {
 					main::diag("[$i] $seen_num ne $expected_num (diff. by $diff)");
 					main::diag("slot: ".Dumper($slot));
 					main::diag("expected: ".Dumper($expected));
+					main::is_deeply($slot, $expected, "failure info");
 					undef($pass);
 					last;
 				}
@@ -190,5 +191,7 @@ make_test
 		}
 	},
 	sub { $_[0]->val }, "Test Skipped PVMG";
+
+make_test sub { our $n; +{ foo => 1.0*$_[0], t=>$threads::tbb::worker,n=>++$n, map { ("yex$_") => ("hax".(192-$_)) } (1..192) } }, sub { $_[0]->{foo} }, "Test Big HV";
 
 1;
