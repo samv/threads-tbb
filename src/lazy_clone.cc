@@ -407,8 +407,8 @@ SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter
 				done[it] = graph_walker_slot(newSViv(SvIVX(it)), true);
 				break;
 			default:
-				croak("unknown SV type %d SVt_PVIV = %d; cannot marshall through concurrent container",
-				      SvTYPE(it), SVt_PVNV);
+				croak("unknown SV type=%d (IV = %d); cannot marshall through concurrent container",
+				      SvTYPE(it), SvIVX(it));
 			}
 			IF_DEBUG_CLONE("cloned %x => %x / t=%d / rc=%d", it, done[it].tsv, SvTYPE(done[it].tsv), SvREFCNT(done[it].tsv));
 		}

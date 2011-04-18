@@ -86,6 +86,7 @@ void perl_tbb_init::load_modules( pTHX ) {
 			ENTER;
 			require_pv(modfilename);
 			LEAVE;
+			IF_DEBUG_INIT("require '%s' done", modfilename);
 		}
 	}
 }
