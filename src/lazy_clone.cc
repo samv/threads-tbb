@@ -282,7 +282,12 @@ SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter
 				// hash
 				if (isnew) {
 					IF_DEBUG_CLONE("   new HV");
-					done[it] = graph_walker_slot((SV*)newHV());
+					bool empty = HvARRAY(it) == 0;
+					done[it] = graph_walker_slot((SV*)newHV(), empty);
+					if (empty) {
+						IF_DEBUG_CLONE("   empty HV! done");
+						continue;
+					}
 				}
 
 				// side-effect free hash iteration :)

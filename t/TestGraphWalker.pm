@@ -194,4 +194,10 @@ make_test
 
 make_test sub { our $n; +{ foo => 1.0*$_[0], t=>$threads::tbb::worker,n=>++$n, map { ("yex$_") => ("hax".(192-$_)) } (1..192) } }, sub { $_[0]->{foo} }, "Test Big HV";
 
+make_test sub { our $n; +{
+	foo => 1.0*$_[0],
+	t=>$threads::tbb::worker,
+	n=>++$n,
+	x => {},
+} }, sub { ref $_[0]->{x} eq "HASH" and (scalar keys %{$_[0]->{x}} == 0) and $_[0]->{foo} }, "Test Empty HV";
 1;
