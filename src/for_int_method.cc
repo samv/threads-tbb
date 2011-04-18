@@ -12,11 +12,14 @@ extern "C" {
 
 // this function might be made into a helper / base class at some point...
 SV* perl_for_int_method::get_invocant( pTHX_ int worker ) {
-	IF_DEBUG_PERLCALL( "getting invocant for worker %d", worker );
+	IF_DEBUG_PERLCALL( "getting invocant for worker %d; copied=%x", worker, copied );
 	copied->grow_to_at_least(worker+1);
 	perl_concurrent_slot x = (*copied)[worker];
 	if (!x.thingy || (x.owner != my_perl)) {
-		x = perl_concurrent_slot( my_perl, invocant.clone( my_perl ) );
+		IF_DEBUG_PERLCALL( "time to clone!" );
+	  
+		(*copied)[worker] = perl_concurrent_slot( my_perl, invocant.clone( my_perl ) );
+		x = (*copied)[worker];
 	}
 	return x.dup( my_perl );
 }
