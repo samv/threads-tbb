@@ -159,6 +159,11 @@ SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter
 			}
 			else {
 				IF_DEBUG_CLONE("   refers to seen ref %x (%x)", SvRV(it), (*target).second.tsv);
+				if ((*target).second.tsv == &PL_sv_undef) {
+					IF_DEBUG_CLONE("   => undef");
+					done[it] = graph_walker_slot( &PL_sv_undef, true );
+					continue;
+				}
 				// target exists!  set the ref
 				IF_DEBUG_CLONE("   (upgrade %x to RV)", (*item).second.tsv);
 				SvUPGRADE((*item).second.tsv, SVt_RV);
@@ -223,6 +228,11 @@ SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter
 			SV* magic_sv;
 			IF_DEBUG_CLONE("   SV is not ROK but type %d", SvTYPE(it));
 			switch (SvTYPE(it)) {
+			case SVt_NULL:
+			null_out:
+				IF_DEBUG_CLONE("    => NULL (bugger)");
+				done[it] = graph_walker_slot( &PL_sv_undef, true );
+				break;
 			case SVt_PVAV:
 				IF_DEBUG_CLONE("     => AV");
 				// array ... seen?
@@ -378,6 +388,8 @@ SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter
 			case SVt_PVMG:
 				IF_DEBUG_CLONE("     => PVMG (%x)", SvIVX(it));
 				IF_DEBUG_LEAK("new PVMG: %x", SvIVX(it));
+				if (SvIVX(it) == 0)
+					goto null_out; // bugger.
 				done[it] = graph_walker_slot(newSViv(SvIVX(it)), true);
 				break;
 			default:
