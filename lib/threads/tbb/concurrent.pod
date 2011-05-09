@@ -79,9 +79,10 @@ way of shunting data between interpreters using the lazy clone method.
       -- from change#4675: "USE_ITHREADS tweaks and notes"
          Gurusamy Sarathy, 9 Dec 1999
 
-The C++ function C<clone_other_sv>, from F<graphwalker.cc>,
-exists to implement selecting cloning of data reachable from
-one interpreter to the next.  This is implemented in a lazy fashion.
+The C++ function C<clone_other_sv>, from F<src/lazy_clone.cc> in the
+source distribution, exists to implement selecting cloning of data
+reachable from one interpreter to the next.  This is implemented in a
+lazy fashion.
 
 If entries in the container are requested by a different
 thread, a deep copy happens then and there, carried out by
@@ -126,8 +127,8 @@ As closures are not supported, inside-out objects cannot be
 passed - and in fact they'd likely be very inefficient.
 
 Not yet supported are MAD properties or "strange" forms of magic.
-Overload is currently thought to be safe.  Filehandles I do intend to
-support, but they are not implemented yet.
+Overload is currently thought to be safe.  Filehandles should be
+relatively trivial to support but are not implemented yet.
 
 =head1 On memory copying stability
 

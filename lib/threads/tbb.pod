@@ -449,5 +449,17 @@ this library, or whether using with, say, a GPL-3 library revokes the
 right to copy the software is left as an exercise for the OSS licensing
 geek reader.
 
+=head1 CHANGES
+
+=over
+
+=item B<version 0.02, May 10 2011>
+
+This version principally adds the corresponding white paper and a
+couple of minor documentation changes.  Hopefully the next version
+will actually implement some more of the TBB API!
+
+=back
+
 =cut
 
