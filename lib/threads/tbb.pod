@@ -281,10 +281,11 @@ where required, and pass references where the values came from the
 same interpreter.  There is more discussion of this on
 L<threads::tbb::concurrent>
 
-=head2 map_list_func#TODO
+=head2 map_list_func
 
-This planned API wraps most of the fiddly work of making a
-for_int_array_func body object.
+This planned API wraps the for_int_array_func body object for a
+map-like API.  The function must be static.  The grain size for this
+operation is 1.
 
   use threads::tbb;
 

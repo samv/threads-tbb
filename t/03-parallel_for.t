@@ -31,3 +31,8 @@ $body->parallel_for($range);
 
 pass("didn't crash!");
 
+my @mapped = $tbb->map_list_func("StaticCB::map_func", 1, 10, 15, 5, 3);
+
+use Data::Dumper;
+is_deeply(\@mapped, [ 1, 3, 3, 1, 1, 1, 5, 3 ], "map_list_func")
+	or diag Dumper \@mapped;
