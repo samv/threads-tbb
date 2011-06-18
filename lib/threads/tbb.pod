@@ -68,13 +68,16 @@ threads::tbb - interface to the Threading Building Blocks (TBB) API
 
 =head1 DESCRIPTION
 
-This module provides access to a few core TBB API functions to Perl
-programs.
+This module provides access to the a selection of Intel's Threading
+Building Blocks (TBB) library to Perl programs.  TBB is a C++ library
+that provides pre-tested, scalable algorithms for solving a number of
+common problems that benefit from parallelism.
 
-The algorithms employed by TBB are quite different to threads as
-provided by L<use threads;> - instead of directly starting threads and
-managing their activity and communication/synchronisation, an API is
-provided that provides I<data parallelism>;
+The API provided by TBB and this module is quite different to threads
+as provided by POSIX threads and L<use threads;> - instead of directly
+starting threads and managing their activity and
+communication/synchronisation, an API is provided that provides I<data
+parallelism>;
 
 =over
 
