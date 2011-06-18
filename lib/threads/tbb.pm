@@ -124,7 +124,11 @@ sub map_list_func {
 	);
 	my $min = 1;
 	my $max = $#array;
-	my $range = threads::tbb::blocked_int->new($min, $max+1, 1);
+	my $chunk_size = defined $$func ? $$func : 1;
+#	print STDERR "using chunk size of $chunk_size\n";
+	my $range = threads::tbb::blocked_int->new(
+		$min, $max+1, $chunk_size,
+	);
 	$body->parallel_for($range);
 	my @rv;
 	for ( my $i = $min; $i <= $max; $i++ ) {

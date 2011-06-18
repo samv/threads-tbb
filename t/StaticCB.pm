@@ -20,5 +20,6 @@ sub map_func {
 	my $item = shift;
 	return( ($item % 7) x (int( ($item+6) / 7)) );
 }
+$map_func = 2;
 
 1;

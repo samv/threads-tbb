@@ -284,8 +284,7 @@ L<threads::tbb::concurrent>
 =head2 map_list_func
 
 This planned API wraps the for_int_array_func body object for a
-map-like API.  The function must be static.  The grain size for this
-operation is 1.
+map-like API.  The function must be static.
 
   use threads::tbb;
 
@@ -298,6 +297,16 @@ operation is 1.
   }
 
   my @result = $tbb->map_list_func('Some::Static::Func', @array);
+
+The grain size for this operation defaults to 1.  See
+L<threads::tbb::blocked_int> for a discussion on what that refers to.
+It can be overridden by defining a scalar with the same name as the
+function, eg in the above example:
+
+  $Some::Static::Func = 3;   # process 3 items at a time
+
+It does not affect the calling convention; each call to the function
+named is passed a single item only.
 
 =head2 reduce_int_array_func#TODO
 
@@ -350,8 +359,27 @@ which has two methods.
 
 =head2 map_reduce_list_func#TODO
 
-Just like B<map_list_func>, this is a convenience wrappe for
-C<reduce_int_array_func>
+Just like B<map_list_func>, this is a convenience wrapper for
+C<reduce_int_array_func>.
+
+  use threads::tbb;
+
+  my $tbb = threads::tbb->new;
+
+  sub Some::Static::Func {
+      my $val = shift;
+      $val->frobnicate();
+      return $val;
+  }
+  sub Some::Static::reduction {
+      my ($a, $b) = @_;
+      return defined $b ? $a + $b : $a;
+  }
+
+  my $result = $tbb->map_reduce_list_func(
+         'Some::Static::Func', 'Some::Static::reduction',
+         @array
+  );
 
 =head2 pipeline / filter #TODO
 
