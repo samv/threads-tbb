@@ -70,7 +70,7 @@ perl_concurrent_slot* perl_interpreter_freelist::next( pTHX ) {
 	}
 }
 
-void perl_concurrent_slot::free() {
+void perl_concurrent_slot::free() const {
 	IF_DEBUG_FREE("freeing a slot: %x, %x", owner, thingy);
 	tbb_interpreter_freelist.free( *this );
 }

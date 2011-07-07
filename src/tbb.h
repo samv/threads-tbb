@@ -62,7 +62,7 @@ public:
 	*/
 	SV* dup( pTHX ) const;    // get if same interpreter, clone otherwise
 	SV* clone( pTHX ) const;  // always clone
-	void free();
+	void free() const;
 };
 
 // same as perl_concurrent_slot, but with refcounting (so it can be
@@ -127,6 +127,12 @@ class perl_concurrent_hash : public tbb::concurrent_hash_map<cpp_hek, perl_concu
 public:
 	int refcnt;
 	perl_concurrent_hash() : refcnt(0) {}
+	~perl_concurrent_hash() {
+		for( perl_concurrent_hash::const_iterator i=this->begin();
+		     i!=this->end(); ++i ) {
+			(*i).second.free();
+		}
+	}
 };
 
 typedef perl_concurrent_hash::const_accessor perl_concurrent_hash_reader;
