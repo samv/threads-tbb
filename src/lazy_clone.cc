@@ -210,7 +210,7 @@ SV* clone_other_sv(PerlInterpreter* my_perl, const SV* sv, const PerlInterpreter
 							LEAVE;
 						}
 						if (status != 42) {
-							warn("Leaking memory because XS class %s didn't define CLONE_SKIP nor CLONE_REFCNT_inc", HvNAME_get(pkg));
+							warn("Leaking memory because XS class %s didn't define CLONE_SKIP nor CLONE_REFCNT_inc (or CLONE_REFCNT_inc didn't return 42)", HvNAME_get(pkg));
 						}
 					}
 				}
