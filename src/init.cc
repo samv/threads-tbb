@@ -24,7 +24,6 @@ void perl_tbb_init::mark_master_thread_ok() {
 		SV* worker_sv = get_sv("threads::tbb::worker", GV_ADD|GV_ADDMULTI);
 		sv_setiv(worker_sv, 0);
 		ptr_to_worker::accessor numlock;
-		bool found = tbb_interpreter_numbers.find( numlock, my_perl );
 		tbb_interpreter_numbers.insert( numlock, my_perl );
 		(*numlock).second = 0;
 		IF_DEBUG_FREE("inserted %x => 0 (master) to tbb_interpreter_numbers", my_perl);
