@@ -62,3 +62,7 @@ perl_concurrent_slot* perl_interpreter_freelist::next( pTHX ) {
 		return 0;
 	}
 }
+
+void perl_concurrent_slot::free() {
+	tbb_interpreter_freelist.free( *this );
+}

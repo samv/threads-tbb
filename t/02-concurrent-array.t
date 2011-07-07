@@ -6,6 +6,7 @@ use strict;
 BEGIN { use_ok("threads::tbb") }
 
 my $array_tie_obj = threads::tbb::concurrent::array->new;
+#my $tbb = threads::tbb->new;
 
 isa_ok($array_tie_obj, "threads::tbb::concurrent::array", "new perl_concurrent_vector");
 is($array_tie_obj->size, 0, "Knows its size");

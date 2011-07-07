@@ -48,9 +48,21 @@ public:
 	PerlInterpreter* owner;
         perl_concurrent_slot( ) : thingy(0) {};
 	perl_concurrent_slot( PerlInterpreter* owner, SV* thingy )
-		: thingy(thingy), owner(owner) {};
+		: thingy(thingy), owner(owner) {
+		IF_DEBUG_FREE("created self: %x, thingy = %x", this, thingy);
+	};
+	/* this causes some strange infinite loop...
+	~perl_concurrent_slot() {
+		if (thingy != 0) {
+			IF_DEBUG_FREE("freeing self: %x, thingy = %x", this, thingy);
+			this->free();
+			thingy = 0;
+		}
+	};
+	*/
 	SV* dup( pTHX ) const;    // get if same interpreter, clone otherwise
 	SV* clone( pTHX ) const;  // always clone
+	void free();
 };
 
 // same as perl_concurrent_slot, but with refcounting (so it can be
@@ -68,6 +80,13 @@ class perl_concurrent_vector : public tbb::concurrent_vector<perl_concurrent_slo
 public:
 	int refcnt;
 	perl_concurrent_vector() : refcnt(0) {}
+	~perl_concurrent_vector() {
+		int size = this->size();
+		for (int i = 0; i < size; i++) {
+			perl_concurrent_slot* slot = &(*this)[i];
+			slot->free();
+		}
+	}
 };
 
 class cpp_hek {
