@@ -39,5 +39,12 @@ my $copy = $scalar;
 is_deeply($copy, $orig, "blessed structures in and out");
 undef($orig);
 $scalar = "foo";
-}
 
+our $DESTROYED = 0;
+{package MyObj;
+ sub DESTROY { $main::DESTROYED++ }
+}
+$scalar = bless{},MyObj::;
+$scalar = "foo";
+is($DESTROYED, 1, "objects in concurrent item destroyed in a timely fashion");
+}

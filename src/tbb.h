@@ -73,6 +73,9 @@ public:
 	perl_concurrent_item( ) : refcnt(0), perl_concurrent_slot() {};
 	perl_concurrent_item( PerlInterpreter* owner, SV* thingy )
 		: refcnt(0), perl_concurrent_slot(owner, thingy) {};
+	~perl_concurrent_item() {
+		this->free();
+	}
 };
 
 // threads::tbb::concurrent::array
