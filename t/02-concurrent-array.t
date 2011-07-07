@@ -6,7 +6,7 @@ use strict;
 BEGIN { use_ok("threads::tbb") }
 
 my $array_tie_obj = threads::tbb::concurrent::array->new;
-#my $tbb = threads::tbb->new;
+my $tbb = threads::tbb->new;
 
 isa_ok($array_tie_obj, "threads::tbb::concurrent::array", "new perl_concurrent_vector");
 is($array_tie_obj->size, 0, "Knows its size");
@@ -48,3 +48,12 @@ $array[4] = "ben";
 is($array[4], "ben", "Reassign undef to value");
 $array[4] = "bud";
 is($array[4], "bud", "Reassign value to value");
+
+our $DESTROYED = 0;
+{package MyObj;
+ sub DESTROY { $main::DESTROYED++ }
+}
+push @array, bless{},MyObj::;
+isa_ok($array[5], "MyObj", "Push an object on the array");
+untie(@array);
+is($DESTROYED, 1, "items in array destroyed in a timely fashion");
