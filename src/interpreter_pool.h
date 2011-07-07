@@ -78,7 +78,8 @@ struct ptr_compare {
 	}
 };
 
-typedef tbb::concurrent_hash_map<void*, int, ptr_compare> ptr_to_worker;
+typedef tbb::concurrent_hash_map<void*, int, ptr_compare> ptr_to_int;
+typedef ptr_to_int ptr_to_worker;
 extern ptr_to_worker tbb_interpreter_numbers;
 
 // freelist; next time interpreter wakes, it will free the items in this
