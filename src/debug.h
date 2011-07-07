@@ -17,6 +17,7 @@
 //#define DEBUG_CLONE
 //#define DEBUG_FREE
 //#define DEBUG_LEAK
+#define DEBUG_REFCOUNTER
 
 // this one is likely to break everything
 //#define DEBUG_PERLCALL_PEEK
@@ -55,4 +56,10 @@
 #define IF_DEBUG_LEAK(msg, e...) IF_DEBUG_THR("[LEAK] " msg, ##e)
 #else
 #define IF_DEBUG_LEAK(msg, e...)
+#endif
+
+#ifdef DEBUG_REFCOUNTER
+#define IF_DEBUG_REFCOUNTER(msg, e...) IF_DEBUG_THR("[REFCOUNTER] " msg, ##e)
+#else
+#define IF_DEBUG_REFCOUNTER(msg, e...)
 #endif
