@@ -5,7 +5,7 @@ use strict 'vars', 'subs';
 use warnings;
 use Carp;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 require XSLoader;
 XSLoader::load('threads::tbb', $VERSION);
