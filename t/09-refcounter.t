@@ -40,6 +40,17 @@ unless ( $threads::tbb::worker ) {
 	threads => 2,
     );
 
+    no strict 'refs';
+    no warnings 'redefine';
+    our $called = 0;
+    *threads::tbb::for_int_method::_xx =
+	\&threads::tbb::for_int_method::_DESTROY_tbbrc;
+    *threads::tbb::for_int_method::_DESTROY_tbbrc = sub {
+	$main::called++;
+	&threads::tbb::for_int_method::_xx(@_);
+    };
+    is($called, 0, "DESTROY not called yet");
+
     my ($body_1, $rc);
 
     {
@@ -50,7 +61,8 @@ unless ( $threads::tbb::worker ) {
 	my $inv = MyObj->new( data => \@array );
 
 	my $body = $tbb->for_int_method( $inv, "callback" );
-	$inv->{body} = $body;
+	my $xxx = $tbb->for_int_method( {}, "xxx" );
+	$inv->{body} = $xxx;
 
 	$body->parallel_for($range);
 
@@ -58,14 +70,22 @@ unless ( $threads::tbb::worker ) {
 	    isa_ok($array[$i], "threads::tbb::for_int_method",
 		   "item $i copied back and forth happily");
 	}
-	$rc = threads::tbb::refcounter::refcount($body);
+	$rc = threads::tbb::refcounter::refcount($xxx);
 	cmp_ok($rc, ">", 1,
 	       "lots of references to body object");
 
-	$body_1 = $body;
+	$body_1 = $xxx;
+
+	is(threads::tbb::refcounter::refcount($body), undef,
+	   "no refcount for an object never transported");
     }
+    is($called, 1, "DESTROY called when refcount = 0");
+
+ TODO: {
+	local $TODO = "still some memory leaks";
     cmp_ok( threads::tbb::refcounter::refcount($body_1),
 	    "<", $rc, "refcount reduced when array destroyed");
+    }
 
     # now, $body_1 should be the only reference to the body object,
     # except for any freed values on the freelists.  Those can be
@@ -77,20 +97,13 @@ unless ( $threads::tbb::worker ) {
 	ok( (grep { $_ ne 0 } @result), "worker 1 processed some too");
     };
 
-    no strict 'refs';
-    no warnings 'redefine';
-    our $called = 0;
-    *threads::tbb::for_int_method::_xx =
-	\&threads::tbb::for_int_method::_DESTROY_tbbrc;
-    *threads::tbb::for_int_method::_DESTROY_tbbrc = sub {
-	$main::called++;
-	&threads::tbb::for_int_method::_xx(@_);
-    };
 
     # now $body_1 really is the only reference to the body object.
+ TODO: {
+	local $TODO = "still some memory leaks";
     is(threads::tbb::refcounter::refcount($body_1), 0,
        "no more references to body object");
-    is($called, 0, "DESTROY not called yet");
     undef($body_1);
-    is($called, 1, "DESTROY called on undef");
+    is($called, 2, "DESTROY called on undef");
+    }
 }

@@ -100,3 +100,9 @@ void perl_for_int_method::operator()( const perl_tbb_blocked_int& r ) const {
 	IF_DEBUG_PERLCALL( "done processing range [%d,%d)",
 			   r.begin(), r.end() );
 };
+
+void perl_for_int_method::free() {
+	this->invocant.free();
+	delete this->copied;
+	this->copied = 0;
+}

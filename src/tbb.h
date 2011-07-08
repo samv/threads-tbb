@@ -197,6 +197,7 @@ perl_for_int_method( pTHX_ perl_tbb_init* context, SV* inv_sv, std::string metho
 	};
 	SV* get_invocant( pTHX_ int worker );
 	void operator()( const perl_tbb_blocked_int& r ) const;
+	void free();
 };
 
 // the crazy^Wlazy clone function :)

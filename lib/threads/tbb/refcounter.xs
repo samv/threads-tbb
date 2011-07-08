@@ -52,12 +52,12 @@ CODE:
 		if (found) {
 			IF_DEBUG_REFCOUNTER("refcount was %d", (*objlock).second);
 			rc = --( (*objlock).second );
-			if (rc < 0) {
+			if (rc <= 0) {
 				IF_DEBUG_REFCOUNTER("removing entry from hash");
 				tbb_refcounter_count.erase( objlock );
 			}
 		}
-		if (rc >= 0) {
+		if (rc > 0) {
 			IF_DEBUG_REFCOUNTER("not chaining old DESTROY for %x", xs_ptr);
 			call_destroy = false;
 		}

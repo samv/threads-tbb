@@ -41,6 +41,5 @@ perl_for_int_method::DESTROY()
 CODE:
 	IF_DEBUG_LEAK("for_int_method::DESTROY; %x", THIS);
 	if (THIS != NULL)
+		THIS->free();
 		delete THIS;
-
-
