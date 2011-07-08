@@ -1,4 +1,4 @@
-threads::tbb version 0.02
+threads::tbb version 0.03
 =========================
 
 This is a very early alpha wrapper for the Intel Threading Building
