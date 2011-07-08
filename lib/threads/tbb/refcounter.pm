@@ -39,11 +39,9 @@ sub setup {
     croak "no DESTROY defined in $target; did you load it, and are you sure it's a real XS class?"
 	unless defined &$destroy;
 
-    print STDERR "Defining: $refcnt_inc in worker $threads::tbb::worker\n";
     *$destroy_rc = \&$destroy;
     *$destroy = \&pvmg_rc_dec;
     *$refcnt_inc = \&pvmg_rc_inc;
-    print STDERR "Defining: $clone_skip in worker $threads::tbb::worker\n";
     *$clone_skip = \&clone_skip;
 }
 
