@@ -453,6 +453,31 @@ geek reader.
 
 =over
 
+=item B<version 0.03, July 7 2011>
+
+=over 4
+
+=item *
+
+New convenience wrapper for marking foreign XS object types as safely
+sharable between threads; see L<threads::tbb::refcounter>.
+
+=item *
+
+New map_list_func convenience API (wrapper for for_int_array_func);
+see L<threads::tbb/map_list_func>
+
+=item *
+
+Documentation enhancements
+
+=item *
+
+Memory leak fixes with containers: they now free their contents when
+they are freed.
+
+=back
+
 =item B<version 0.02, May 10 2011>
 
 This version principally adds the corresponding white paper and a
