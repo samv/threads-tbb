@@ -13,10 +13,14 @@ if (not $Config{useithreads} or $Config{use5005threads} ) {
 
 my $CC = 'g++';
 
-my (@clean, @OBJECT, @LD_FROM, %XS);
+my (@clean, @OBJECT, @LD_FROM, %XS, %PM);
 {
     my @xs;
-    find(sub { !m{^\.} && m{\.xs$} && push @xs, $File::Find::name }, "lib");
+    my @pm;
+    find(sub {
+	     !m{^\.} && m{\.xs$} && push @xs, $File::Find::name;
+	     !m{^\.} && m{\.p(m|od)$} && push @pm, $File::Find::name;
+	 }, "lib");
     for my $xs (@xs) {
         (my $c = $xs) =~ s/\.xs$/.c/i;
         (my $o = $xs) =~ s/\.xs$/\$(OBJ_EXT)/i;
@@ -35,6 +39,11 @@ my (@clean, @OBJECT, @LD_FROM, %XS);
 	#$o =~ s{.*/}{};
 	push @LD_FROM, $o;
         push @clean, $o;
+    }
+    for my $pm ( @pm ) {
+	my $inst = $pm;
+	$inst =~ s{^lib}{\$(INST_LIBDIR)};
+	$PM{$pm} = $inst;
     }
 }
 WriteMakefile(
@@ -57,6 +66,7 @@ WriteMakefile(
         clean  => { FILES => join(q{ }, @clean) },
         OBJECT => join (q{ }, @OBJECT),
         XS     => \%XS,
+    PM => \%PM,
     depend => { '$(OBJECT)' => join(" ", glob "src/*.h") },
 );
 
